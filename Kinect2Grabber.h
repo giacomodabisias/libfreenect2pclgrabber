@@ -8,10 +8,11 @@
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include "depth_registration_cpu.h"
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+#define DEPTH_REG_CPU
 bool shutdown = false;  //bad
 
 void sigint_handler(int s)
@@ -28,7 +29,7 @@ public:
 
  
 
-  Kinect2Grabber(int mode): mode_(mode), init_(true) {
+  Kinect2Grabber(int mode): mode_(mode) {
   	glfwInit();
 		dev_ = freenect2_.openDefaultDevice();
 		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
@@ -125,7 +126,6 @@ public:
   void createCloud(const cv::Mat &depth, const cv::Mat &color, typename pcl::PointCloud<PointT>::Ptr &cloud) const
   {
     const float badPoint = std::numeric_limits<float>::quiet_NaN();
-
     #pragma omp parallel for
     for(int r = 0; r < depth.rows; ++r)
     {
@@ -134,7 +134,6 @@ public:
       const cv::Vec3b *itC = color.ptr<cv::Vec3b>(r);
       const float y = lookupY_.at<float>(0, r);
       const float *itX = lookupX_.ptr<float>();
-
       for(size_t c = 0; c < (size_t)depth.cols; ++c, ++itP, ++itD, ++itC, ++itX)
       {
         register const float depthValue = *itD / 1000.0f;
@@ -159,35 +158,42 @@ public:
 
   typename pcl::PointCloud<PointT>::Ptr
   GetCloud(){
-
     frames_ =  *GetRawFrames();
     rgb_ = frames_[libfreenect2::Frame::Color];
     depth_ = frames_[libfreenect2::Frame::Depth];
     tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
     tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
-    typename pcl::PointCloud<PointT>::Ptr cloud;
-    if(init_){
-      cameraMatrixColor_ = (cv::Mat_<double>() <<  1.0660120360637927e+03, 0., 9.4558752751085558e+02, 0.,
-       1.0688708399911650e+03, 5.2006994012356529e+02, 0., 0., 1. );
-      cameraMatrixDepth_ = (cv::Mat_<double>() <<  3.6638346288148574e+02, 0., 2.5564531890330468e+02, 0.,
-       3.6714380707081017e+02, 2.0398020160452000e+02, 0., 0., 1. );
+    typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>());
+    cloud->height = tmp_rgb_.rows;
+    cloud->width = tmp_rgb_.cols;
+    cloud->is_dense = false;
+    cloud->points.resize(cloud->height * cloud->width);
+    if(depthReg_ == 0){
+      cameraMatrixColor_ = (cv::Mat_<double>(3,3) <<  1.0660120360637927e+03, 0, 9.4558752751085558e+02, 0,
+       1.0688708399911650e+03, 5.2006994012356529e+02, 0, 0, 1. );
+      cameraMatrixDepth_ = (cv::Mat_<double>(3,3) <<  3.6638346288148574e+02, 0, 2.5564531890330468e+02, 0,
+       3.6714380707081017e+02, 2.0398020160452000e+02, 0, 0, 1. );
       createLookup(tmp_rgb_.cols, tmp_rgb_.rows);
       //if(mode_ == 0)
       //  depthReg_ = DepthRegistration::New(cv::Size(rgb_.cols, rgb_.rows), cv::Size(depth_.cols, depth_.rows), cv::Size(depth_.cols, depth_.rows), 0.5f, 20.0f, 0.015f, DepthRegistration::OPENCL);
       //else
-        depthReg_ = DepthRegistration::New(cv::Size(tmp_rgb_.cols, tmp_rgb_.rows),
+       /* depthReg_ = DepthRegistration::New(cv::Size(tmp_rgb_.cols, tmp_rgb_.rows),
                     cv::Size(tmp_depth_.cols, tmp_depth_.rows),
                     cv::Size(tmp_depth_.cols, tmp_depth_.rows),
-                    0.5f, 20.0f, 0.015f, DepthRegistration::CPU);
-      
+                    0.5f, 20.0f, 0.015f, DepthRegistration::CPU);*/
+        depthReg_ = new DepthRegistrationCPU(cv::Size(tmp_rgb_.cols, tmp_rgb_.rows),
+                    cv::Size(tmp_depth_.cols, tmp_depth_.rows),
+                    cv::Size(tmp_depth_.cols, tmp_depth_.rows),
+                    0.5f, 20.0f);
       depthReg_->init(cameraMatrixColor_, cameraMatrixDepth_, 
                     cv::Mat::eye(3, 3, CV_64F), cv::Mat::zeros(1, 3, CV_64F),
                     cv::Mat::zeros(tmp_depth_.rows, tmp_depth_.cols, CV_32F),
                     cv::Mat::zeros(tmp_depth_.rows, tmp_depth_.cols, CV_32F));
     }
-    
     depthReg_->depthToRGBResolution(tmp_depth_, scaled_);
-    createCloud(scaled_, tmp_rgb_, cloud);
+    std::cout << "size before " << tmp_depth_.rows << "x" << tmp_depth_.cols << " after "<< scaled_.rows << "x" <<scaled_.cols<< std::endl;
+    depthReg_->registerDepth(scaled_, scaled_registered_ );
+    createCloud(scaled_registered_, tmp_rgb_, cloud);
     return cloud;
 
 
@@ -201,8 +207,7 @@ private:
 	libfreenect2::FrameMap frames_;
   DepthRegistration * depthReg_ = 0;
   int mode_;
-  bool init_;
-  cv::Mat scaled_;
+  cv::Mat scaled_, scaled_registered_;
   libfreenect2::Frame *depth_;
   libfreenect2::Frame *rgb_;
   cv::Mat  lookupY_, lookupX_, tmp_depth_, tmp_rgb_, cameraMatrixColor_, cameraMatrixDepth_;

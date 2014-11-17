@@ -5,6 +5,12 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAHS "${CMAKE_CXX_FLAGS} -march=native")
 set(CMAKE_BUILD_TYPE Release) 
 
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 set(DEPTH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/depth_registration/)
 set(DEPTH_INCLUDE_DIR ${DEPTH_PATH}/include)
 set(DEPTH_SOURCE_DIR ${DEPTH_PATH}/src)
@@ -23,6 +29,8 @@ include_directories( ${LIBFREENECT2_INCLUDE_DIRS} )
 include_directories( ${GLEW_INCLUDE_DIRS})
 include_directories( ${GLEWF_INCLUDE_DIRS})
 include_directories( ${DEPTH_INCLUDE_DIR})
+include_directories( ${DEPTH_SOURCE_DIR})
+
 
 ADD_DEFINITIONS(-DGLEW_MX -DGLEW_STATIC)
 
