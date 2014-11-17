@@ -15,10 +15,24 @@ int main(int argc, char *argv[])
 {
   
   Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g(1);
+  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 
+  cloud = k2g.GetCloud();
+
+  cloud->sensor_orientation_.w () = 0.0;
+  cloud->sensor_orientation_.x () = 1.0;
+  cloud->sensor_orientation_.y () = 0.0;
+  cloud->sensor_orientation_.z () = 0.0;
+
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  viewer->setBackgroundColor (0, 0, 0);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+  /*
   while(!shutdown)
   {
-    /*
+    
     libfreenect2::FrameMap * frames = k2g.GetRawFrames();
     libfreenect2::Frame *rgb = (*frames)[libfreenect2::Frame::Color];
     libfreenect2::Frame *ir = (*frames)[libfreenect2::Frame::Ir];
@@ -29,8 +43,17 @@ int main(int argc, char *argv[])
     k2g.FreeFrames();
     int key = cv::waitKey(1);
     shutdown = shutdown || (key > 0 && ((key & 0xFF) == 27)); // shutdown on escape
-    */
+    
+  }*/
+
+  while (!viewer->wasStopped ()) {
+    viewer->spinOnce ();
+    cloud = k2g.GetCloud();
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+    viewer->updatePointCloud<pcl::PointXYZRGB> (cloud,rgb, "sample cloud"); 
+
   }
+
   k2g.ShutDown();
   return 0;
 }

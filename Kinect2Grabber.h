@@ -122,14 +122,14 @@ public:
     }
   }
 
-  void createCloud(const cv::Mat &depth, const cv::Mat &color, pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &cloud) const
+  void createCloud(const cv::Mat &depth, const cv::Mat &color, typename pcl::PointCloud<PointT>::Ptr &cloud) const
   {
     const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
     #pragma omp parallel for
     for(int r = 0; r < depth.rows; ++r)
     {
-      pcl::PointXYZRGBA *itP = &cloud->points[r * depth.cols];
+      PointT *itP = &cloud->points[r * depth.cols];
       const uint16_t *itD = depth.ptr<uint16_t>(r);
       const cv::Vec3b *itC = color.ptr<cv::Vec3b>(r);
       const float y = lookupY_.at<float>(0, r);
@@ -160,7 +160,7 @@ public:
   typename pcl::PointCloud<PointT>::Ptr
   GetCloud(){
 
-    frames_ =  GetRawFrames();
+    frames_ =  *GetRawFrames();
     rgb_ = frames_[libfreenect2::Frame::Color];
     depth_ = frames_[libfreenect2::Frame::Depth];
     tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
