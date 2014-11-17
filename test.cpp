@@ -2,22 +2,23 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include "Kinect2Grabber.h"
 #include "GL/glew.h"
+
 
 
 
 int main(int argc, char *argv[])
 {
   
-  Kinect2::Kinect2Grabber k2g;
-  libfreenect2::RgbPacketStreamParser *rgb_parser = new  libfreenect2::RgbPacketStreamParser();
-  char * buffer[1920*1080*3+sizeof(libfreenect2::RgbPacket)];
-  //buffer = rgb_parser->buffer_.front();
+  Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g(1);
 
   while(!shutdown)
   {
-
+    /*
     libfreenect2::FrameMap * frames = k2g.GetRawFrames();
     libfreenect2::Frame *rgb = (*frames)[libfreenect2::Frame::Color];
     libfreenect2::Frame *ir = (*frames)[libfreenect2::Frame::Ir];
@@ -28,6 +29,7 @@ int main(int argc, char *argv[])
     k2g.FreeFrames();
     int key = cv::waitKey(1);
     shutdown = shutdown || (key > 0 && ((key & 0xFF) == 27)); // shutdown on escape
+    */
   }
   k2g.ShutDown();
   return 0;
