@@ -11,7 +11,7 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(DEPTH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/depth_registration/)
+set(DEPTH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/depth_registration_/)
 set(DEPTH_INCLUDE_DIR ${DEPTH_PATH}/include)
 set(DEPTH_SOURCE_DIR ${DEPTH_PATH}/src)
 
