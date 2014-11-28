@@ -29,7 +29,7 @@ private:
   cv::Mat lookupX, lookupY;
   Eigen::Matrix4d proj;
   double fx, fy, cx, cy;
-  
+
 
 public:
   DepthRegistrationCPU();
@@ -37,6 +37,8 @@ public:
   ~DepthRegistrationCPU();
 
   bool init();
+
+  virtual void createCloud( cv::Mat &depth,  cv::Mat &color, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud) override;
 
   void registerDepth(const cv::Mat &depth, cv::Mat &registered);
 

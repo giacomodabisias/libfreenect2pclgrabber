@@ -20,6 +20,9 @@
 #define __DEPTH_REGISTRATION_H__
 
 #include <vector>
+  #include <pcl/visualization/cloud_viewer.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -50,6 +53,8 @@ public:
             const float zNear = 0.5f, const float zFar = 12.0f);
 
   virtual void registerDepth(const cv::Mat &depth, cv::Mat &registered) = 0;
+
+  virtual void createCloud( cv::Mat &depth,  cv::Mat &color, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud) = 0;
 
   static DepthRegistration *New(Method method = DEFAULT);
 };

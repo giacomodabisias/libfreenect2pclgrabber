@@ -15,7 +15,6 @@ set(DEPTH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/depth_registration_/)
 set(DEPTH_INCLUDE_DIR ${DEPTH_PATH}/include)
 set(DEPTH_SOURCE_DIR ${DEPTH_PATH}/src)
 
-find_package(CUDA REQUIRED)
 find_package( OpenCV REQUIRED )
 
 find_package(PCL 1.7 REQUIRED)
@@ -25,26 +24,15 @@ add_definitions(${PCL_DEFINITIONS})
 
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories( ${OpenCV_INCLUDE_DIRS} )
-include_directories( ${LIBFREENECT2_INCLUDE_DIRS} )
-include_directories( ${GLEW_INCLUDE_DIRS})
-include_directories( ${GLEWF_INCLUDE_DIRS})
 include_directories( ${DEPTH_INCLUDE_DIR})
 include_directories( ${DEPTH_SOURCE_DIR})
+include_directories( ${GLEW_INCLUDE_DIRS})
+include_directories( ${GLEWF_INCLUDE_DIRS})
 
-
-ADD_DEFINITIONS(-DGLEW_MX -DGLEW_STATIC)
-
-
-set(CUDA_PROPAGATE_HOST_FLAGS OFF) 
-
-if(${APPLE})
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-ccbin /usr/bin/clang)
-else()
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-ccbin /usr/bin/gcc -arch=sm_30 )
-set(EXTRALIB rt)
-endif()
+add_definitions(-DGLEW_MX -DGLEW_STATIC)
 
 add_executable(Kinect2Grabber test.cpp ${DEPTH_SOURCE_DIR}/depth_registration.cpp ${DEPTH_SOURCE_DIR}/depth_registration_cpu.cpp )
 
-target_link_libraries(Kinect2Grabber ${CUDA_LIBRARIES} ${EXTRALIB} ${OpenCV_LIBS} ${LIBFREENECT2_LIBS} ${GLEW_LIBS} ${GLEWF_LIBS} ${PCL_LIBRARIES})
+target_link_libraries(Kinect2Grabber ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${LIBFREENECT2_LIB} ${GLEW_LIB} ${GLFW_LIB} ${PCL_LIBRARIES})
 
+#cmake .. -DGLEW_LIB=/home/gf/Libraries/libfreenect2/depends/glew/lib64/libGLEW.so -DGLFW_LIB=/home/gf/Libraries/libfreenect2/examples/protonect/lib/libglfw.so.3.0 -DGLEW_INCLUDE_DIRS=/home/gf/Libraries/libfreenect2/depends/glew/include -DGLEWF_INCLUDE_DIRS=/home/gf/Libraries/libfreenect2/depends/glfw/include -DLIBFREENECT2_LIB=/home/gf/Libraries/libfreenect2/examples/protonect/lib/libfreenect2.so

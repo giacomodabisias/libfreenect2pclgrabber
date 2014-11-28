@@ -30,6 +30,8 @@ DepthRegistrationCPU::~DepthRegistrationCPU()
 {
 }
 
+
+
 bool DepthRegistrationCPU::init()
 {
   createLookup();
@@ -206,5 +208,41 @@ void DepthRegistrationCPU::createLookup()
   for(size_t c = 0; c < (size_t)sizeRegistered.width; ++c, ++it)
   {
     *it = (c - cx) * fx;
+  }
+}
+
+void 
+DepthRegistrationCPU::createCloud( cv::Mat &depth,  cv::Mat &color, pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud) 
+{
+  const float badPoint = std::numeric_limits<float>::quiet_NaN();
+
+  #pragma omp parallel for
+  for(int r = 0; r < depth.rows; ++r)
+  {
+    pcl::PointXYZRGB *itP = &cloud->points[r * depth.cols];
+    const uint16_t *itD = depth.ptr<uint16_t>(r);
+    const cv::Vec3b *itC = color.ptr<cv::Vec3b>(r);
+    const float y = lookupY.at<float>(0, r);
+    const float *itX = lookupX.ptr<float>();
+
+    for(size_t c = 0; c < (size_t)depth.cols; ++c, ++itP, ++itD, ++itC, ++itX)
+    {
+      register const float depthValue = *itD / 1000.0f;
+      // Check for invalid measurements
+      if(isnan(depthValue) || depthValue <= 0.001)
+      {
+        // not valid
+        itP->x = itP->y = itP->z = badPoint;
+        itP->rgba = 0;
+        continue;
+      }
+      itP->z = depthValue;
+      itP->x = *itX * depthValue;
+      itP->y = y * depthValue;
+      itP->b = itC->val[0];
+      itP->g = itC->val[1];
+      itP->r = itC->val[2];
+      itP->a = 0;
+    }
   }
 }

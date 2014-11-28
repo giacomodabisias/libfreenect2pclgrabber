@@ -1,3 +1,11 @@
+#include <iostream>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include "GL/glew.h"
 #include <libfreenect2/opengl.h>
 #include <signal.h>
 #include <libfreenect2/libfreenect2.hpp>
@@ -19,6 +27,50 @@ void sigint_handler(int s)
 {
   shutdown = true;
 }
+
+double x,y,z;
+
+void
+KeyboardEventOccurred (const pcl::visualization::KeyboardEvent &event)
+{
+  std::string pressed;
+  pressed = event.getKeySym ();
+  if (event.keyDown ())
+  {
+    if (pressed == "a")
+    {
+      x += 0.01;
+      std::cout << "\tx increased to " << x << std::endl;
+    }
+    else if (pressed == "s")
+    {
+      y += 0.01;
+      std::cout << "\ty increased to " << y << std::endl;
+    }
+     else if (pressed == "d")
+    {
+      z += 0.01;
+      std::cout << "\tz increased to " << z << std::endl;
+    }
+     else if (pressed == "z")
+    {
+      x -= 0.01;
+      std::cout << "\tx decreased to " << x << std::endl;
+    }
+     else if (pressed == "x")
+    {
+      y -= 0.01;
+      std::cout << "\ty decreased to " << y << std::endl;
+    }
+     else if (pressed == "c")
+    {
+      z -= 0.01;
+      std::cout << "\tz decreased to " << z << std::endl;
+    }
+    
+  }
+}
+
 
 namespace Kinect2 {
 
@@ -106,6 +158,22 @@ public:
 	GetIrPArams(){
 		return ir_camera_params_;
 	}
+
+	cv::Mat
+	GetCameraMatrixColor(){
+		return cameraMatrixColor_;
+	}
+
+	cv::Mat
+	GetCameraMatrixDepth(){
+		return cameraMatrixDepth_;
+	}
+
+	cv::Mat
+	GetDistortion(){
+		return distortion_;
+	}
+
 
 	void
 	FreeFrames(){
@@ -199,11 +267,11 @@ public:
 			9.9983695759005575e-01, -1.6205694274052811e-02,-7.9645282444769407e-03, 
 			1.6266694212988934e-02, 9.9983838631845712e-01, 7.6547961099503467e-03,
        		7.8391897822575607e-03, -7.7831045990485416e-03, 9.9993898333166209e-01  );
-
+		
 		translation_ = (cv::Mat_<double>(3,1) <<
-			-5.1927840124258939e-02, -4.5307585220976776e-04, 7.0571985343338605e-05 );
+			0.1927840124258939e-02, -4.5307585220976776e-04, 7.0571985343338605e-05 );
 
-		distorsion_ = (cv::Mat_<double>(1,5) <<
+		distortion_ = (cv::Mat_<double>(1,5) <<
 			ir_camera_params_.k1,    ir_camera_params_.k2, 1.0698071918753883e-03,
 			1.1438966542906426e-04,  ir_camera_params_.k3                          );  			
 		
@@ -212,22 +280,24 @@ public:
 		size_registered_ = cv::Size(1920, 1080); 
 		size_depth_ = cv::Size(512, 424);
 
+		cloud_->height = size_registered_.height;
+		cloud_->width = size_registered_.width;
+		cloud_->is_dense = false;
+		cloud_->points.resize(cloud_->height * cloud_->width);
 
 		depthReg_->init(cameraMatrixColor_,
 						size_registered_,
 					    cameraMatrixDepth_,
 					    size_depth_,
-					    distorsion_,
+					    distortion_,
 						rotation_, 
 						translation_ );
-
-		cloud_->height = size_registered_.height;
-		cloud_->width = size_registered_.width;
-		cloud_->is_dense = false;
-		cloud_->points.resize(cloud_->height * cloud_->width);
 		
 
 	}
+	
+
+	
 	
 	depthReg_->registerDepth(tmp_depth_, registered_ );
 	createCloud(registered_, tmp_rgb_, cloud_);
@@ -249,7 +319,7 @@ private:
 	libfreenect2::Frame *depth_;
 	libfreenect2::Frame *rgb_;
 	cv::Size size_registered_, size_depth_;
-	cv::Mat lookupY_, lookupX_, tmp_depth_, tmp_rgb_, cameraMatrixColor_, cameraMatrixDepth_, distorsion_;
+	cv::Mat lookupY_, lookupX_, tmp_depth_, tmp_rgb_, cameraMatrixColor_, cameraMatrixDepth_, distortion_;
 	typename pcl::PointCloud<PointT>::Ptr cloud_;
 
 };
