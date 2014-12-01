@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
   int count = 0;
   int counter = 0;
   cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(4.0, cv::Size(8, 8));
+
   const cv::TermCriteria termCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 50, DBL_EPSILON);
   
   while(!shutdown)
@@ -136,11 +137,10 @@ int main(int argc, char *argv[])
     
    */
     
-
-    std::string ir_name = std::string("./images/ir/ir_image_") + std::to_string(count) + std::string(".jpg");
     std::string rgb_name = std::string("./images/rgb/rgb_image_") + std::to_string(count) + std::string(".jpg");
-    cv::Mat ir_gray = cv::imread(ir_name, 0);
+    std::string ir_name = std::string("./images/ir/ir_image_") + std::to_string(count) + std::string(".jpg");
     cv::Mat rgb_gray = cv::imread(rgb_name, 0);
+    cv::Mat ir_gray = cv::imread(ir_name, 0);
 
 
     std::vector<cv::Point2f > camera1ImagePoints;
@@ -152,11 +152,14 @@ int main(int argc, char *argv[])
     cv::cornerSubPix(rgb_gray, camera1ImagePoints, cv::Size(11, 11), cv::Size(-1, -1), termCriteria);
     cv::cornerSubPix(ir_gray, camera2ImagePoints, cv::Size(11, 11), cv::Size(-1, -1), termCriteria);
     
+  //  drawChessboardCorners(rgb_gray, boardSize, camera1ImagePoints, found1);
+   // drawChessboardCorners(ir_gray, boardSize, camera2ImagePoints, found1);
+
     rgbImagePoints.push_back(camera1ImagePoints);
     irImagePoints.push_back(camera2ImagePoints);
 
-    //cv::imshow("rgb", rgb_gray);
-    //cv::imshow("ir", ir_gray  );
+   // cv::imshow("rgb", rgb_gray);
+   // cv::imshow("ir", ir_gray  );
 
     int key = cv::waitKey(30);
     count++;
@@ -166,27 +169,40 @@ int main(int argc, char *argv[])
     
   }
 
-
 std::vector<std::vector<cv::Point3f> > pointsBoard(1);
-calcBoardCornerPositions(boardSize, 2.5, pointsBoard[0]);
+calcBoardCornerPositions(boardSize, 0.025, pointsBoard[0]);
 pointsBoard.resize(16,pointsBoard[0]);
+/*
+for (int i = 0; i < 16; ++i){
+  std::cout << "rgb " << rgbImagePoints[i] << std::endl;
+  std::cout << "ir " << irImagePoints[i] << std::endl;
+  std::cout << "fixed " << pointsBoard[i] << std::endl;
+  std::cout << std::endl;
 
-std::cout << pointsBoard.size() << " " << rgbImagePoints.size() << " " << irImagePoints.size() << std::endl;
+}*/
 
-cv::Mat R, T, E, F;
+cv::Mat rotation, translation, essential, fundamental;
+
 cv::Mat distiortion_color_ = (cv::Mat_<double>(1,5) << 5.9360108008991816e-02, -6.2758287999836640e-02,
        -1.5766859436148536e-03, -1.1502971845708829e-03, 7.7657531491476016e-03);
 
-double rms = stereoCalibrate(pointsBoard, rgbImagePoints, irImagePoints,
-                k2g.GetCameraMatrixColor(), distiortion_color_,
-                k2g.GetCameraMatrixDepth(), k2g.GetDistortion(),
-                cv::Size(1920,1080), R, T, E, F,
-                0x00100,
+cv::Mat CC = k2g.GetCameraMatrixColor();
+cv::Mat DC = distiortion_color_;
+cv::Mat CD = k2g.GetCameraMatrixDepth();
+cv::Mat DD = k2g.GetDistortion();
+
+
+double rms = cv::stereoCalibrate(pointsBoard, rgbImagePoints, irImagePoints,
+                CC, DC,
+                CD, DD,
+                cv::Size(512,424), rotation, translation, essential, fundamental,
+                cv::CALIB_FIX_INTRINSIC + cv::CALIB_USE_INTRINSIC_GUESS,
                 termCriteria
                 );
 
+std::cout << "error " << rms << std::endl;
 
-std::cout << "rotation:" <<std::endl << R << std::endl << "translation" << std::endl << T << std::endl;
+std::cout << "rotation:"  << rotation << std::endl << "translation" << std::endl << translation << std::endl;
 
 /*
   while (!viewer->wasStopped ()) {
