@@ -401,7 +401,7 @@ public:
 	{
 		const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
-		#pragma omp parallel for
+		//#pragma omp parallel for
 		for(int r = 0; r < depth.rows; ++r)
 		{
 		  PointT *itP = &cloud->points[r * depth.cols];
@@ -431,26 +431,24 @@ public:
 			Eigen::Vector3d rgb_world((c - rgb_cx_) / rgb_fx_ * depth_value, (r - rgb_cy_) / rgb_fy_ * depth_value, depth_value);
 			//rgb world to depth world
 			
-			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> > mappedMat (rotation_.data,3, 3);
-			Eigen::MatrixXd rotation = mappedMat;
+			Eigen::Map<Eigen::Matrix<double,3,3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
+			Eigen::Matrix3d rotation = mappedMat;
 
-			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> > mappedMat2 (translation_.data,3,1);
-			Eigen::MatrixXd translation = mappedMat2;
+			Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
+			Eigen::Vector3d translation = mappedMat2;
 
-
-			Eigen::Matrix3f depth_world = rgb_world * rotation + translation;
+			Eigen::Vector3d depth_world = rotation * rgb_world + translation;
 			//depth world to depth image
-			std::cout << "calculated world coordinates" <<std::endl;
-			float depth_image_x = ((depth_world.x() + ir_cx_) * ir_fx_ / depth_value);
-			float depth_image_y = ((depth_world.y() + ir_cy_) * ir_fy_ / depth_value);
+			int depth_image_x = ((depth_world.x() * ir_fx_ / depth_value)) + ir_cx_;
+			int depth_image_y = ((depth_world.y() * ir_fy_ / depth_value)) + ir_cy_;
 			uint16_t true_depth = depth.at<uint16_t>(depth_image_x, depth_image_y);
 
 			itP->z = true_depth;
 			itP->x = depth_image_x;
 			itP->y = depth_image_y;
-			itP->b = 255;//(color.at<uint8_t>(rgb_world.at<float>(0), rgb_world.at<float>(1)))[0];
-			itP->g = 255;//(color.at<uint8_t>(rgb_world.at<float>(0), rgb_world.at<float>(1)))[1];
-			itP->r = 255;//(color.at<uint8_t>(rgb_world.at<float>(0), rgb_world.at<float>(1)))[2];
+			itP->b = 255;//(color.at<uint8_t>(rgb_world.x(), rgb_world.y()))[0];
+			itP->g = 255;//(color.at<uint8_t>(rgb_world.x(), rgb_world.y()))[1];
+			itP->r = 255;//(color.at<uint8_t>(rgb_world.x(), rgb_world.y()))[2];
 
 		  }
 		}
