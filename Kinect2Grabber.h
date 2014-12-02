@@ -402,53 +402,59 @@ public:
 		const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
 		//#pragma omp parallel for
-		for(int r = 0; r < depth.rows; ++r)
+		for(int y = 0; y < depth.rows; ++y)
 		{
-		  PointT *itP = &cloud->points[r * depth.cols];
-		  const uint16_t *itD = depth.ptr<uint16_t>(r);
-		  const cv::Vec3b *itC = color.ptr<cv::Vec3b>(r);
+		  PointT *itP = &cloud->points[y * depth.cols];
+		  const uint16_t *itD = depth.ptr<uint16_t>(y);
+		  const cv::Vec3b *itC = color.ptr<cv::Vec3b>(y);
 
-		  for(size_t c = 0; c < (size_t)depth.cols; ++c, ++itP, ++itD, ++itC )
+
+		  for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD, ++itC )
 		  {
 		    register const float depth_value = *itD / 1000.0f;
-		    // Check for invalid measurements
+		    register const float f = (1920./512.)/(1080./424.);
 
+		    // Check for invalid measurements
 			if(isnan(depth_value) || depth_value <= 0.001)
 			{
 			   // not valid
 			   itP->x = itP->y = itP->z = badPoint;
 			   itP->rgba = 0;
 			   continue;
-			}/*
-			itP->z = depth_value;
-			itP->x = ((c - rgb_cx_) / rgb_fx_) * depth_value;
-			itP->y = ((r - rgb_cy_) / rgb_fy_) * depth_value;
-			itP->b = itC->val[0];
-			itP->g = itC->val[1];
-			itP->r = itC->val[2];*/
+			}
+			/*
+			itP->z = depth_value ;
+			itP->x = (x - ir_cx_) / (ir_fx_) * depth_value;
+			itP->y = (y - ir_cy_) / (ir_fy_ ) * depth_value;
+			itP->b = 255;//itC->val[0];
+			itP->g = 255;//itC->val[1];
+			itP->r = 255;//itC->val[2];
+			*/
 
-			//to rgb world
-			Eigen::Vector3d rgb_world((c - rgb_cx_) / rgb_fx_ * depth_value, (r - rgb_cy_) / rgb_fy_ * depth_value, depth_value);
-			//rgb world to depth world
-			
+			//to depth world
+			float final_x = (x - (ir_cx_*f)) / (ir_fx_*f) * depth_value;
+			float final_y = (y - (ir_cy_*f)) / (ir_fy_*f) * depth_value;
+			Eigen::Vector3d ir_world(final_x, final_y , depth_value);
+
+			//depth world to rgb world
 			Eigen::Map<Eigen::Matrix<double,3,3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
 			Eigen::Matrix3d rotation = mappedMat;
-
 			Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
 			Eigen::Vector3d translation = mappedMat2;
 
-			Eigen::Vector3d depth_world = rotation * rgb_world + translation;
-			//depth world to depth image
-			int depth_image_x = ((depth_world.x() * ir_fx_ / depth_value)) + ir_cx_;
-			int depth_image_y = ((depth_world.y() * ir_fy_ / depth_value)) + ir_cy_;
-			uint16_t true_depth = depth.at<uint16_t>(depth_image_x, depth_image_y);
+			Eigen::Vector3d rgb_world = rotation * ir_world + translation;
 
-			itP->z = true_depth;
-			itP->x = depth_image_x;
-			itP->y = depth_image_y;
-			itP->b = 255;//(color.at<uint8_t>(rgb_world.x(), rgb_world.y()))[0];
-			itP->g = 255;//(color.at<uint8_t>(rgb_world.x(), rgb_world.y()))[1];
-			itP->r = 255;//(color.at<uint8_t>(rgb_world.x(), rgb_world.y()))[2];
+			//rgb world to rgb image
+			int rgb_image_x = ((rgb_world.x() * rgb_fx_ / depth_value)) + rgb_cx_;
+			int rgb_image_y = ((rgb_world.y() * rgb_fy_ / depth_value)) + rgb_cy_;
+			
+			itP->z = depth_value;
+			itP->x = final_x;
+			itP->y = final_y;
+			const cv::Vec3b *tmp = color.ptr<cv::Vec3b>(rgb_image_y * depth.cols + rgb_image_y);
+			itP->b = tmp->val[0];
+			itP->g = tmp->val[1];
+			itP->r = tmp->val[2];
 
 		  }
 		}
@@ -576,7 +582,6 @@ public:
 		distortion_ = (cv::Mat_<double>(1,5) <<
 			0.08886683884842322, -0.2474225084881365, -0.002864812899835538, -0.0006690936537519126, 0.05729994721039293);  			
 		*/
-
 		rgb_fx_ = rgb_camera_matrix_.at<double>(0,0);
 		rgb_fy_ = rgb_camera_matrix_.at<double>(1,1);
 		rgb_cx_ = rgb_camera_matrix_.at<double>(0,2);
