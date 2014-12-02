@@ -428,20 +428,29 @@ public:
 			itP->r = itC->val[2];*/
 
 			//to rgb world
-			Eigen::Vector3d rgb_world(((c - rgb_cx_) / rgb_fx_) * depth_value, ((r - rgb_cy_) / rgb_fy_) * depth_value, depth_value);
+			Eigen::Vector3d rgb_world((c - rgb_cx_) / rgb_fx_ * depth_value, (r - rgb_cy_) / rgb_fy_ * depth_value, depth_value);
 			//rgb world to depth world
-			Eigen::Vector3d depth_world = rgb_world * rotation_ + translation_;
+			
+			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> > mappedMat (rotation_.data,3, 3);
+			Eigen::MatrixXd rotation = mappedMat;
+
+			Eigen::Map<Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> > mappedMat2 (translation_.data,3,1);
+			Eigen::MatrixXd translation = mappedMat2;
+
+
+			Eigen::Matrix3f depth_world = rgb_world * rotation + translation;
 			//depth world to depth image
-			float depth_image_x = (depth_world.x() + ir_cx) * ir_fx / depth_value);
-			float depth_image_y = (depth_world.y() + ir_cy) * ir_fy / depth_value);
-			float true_depth = depth.at<double>(depth_image_x, depth_image_y);
+			std::cout << "calculated world coordinates" <<std::endl;
+			float depth_image_x = ((depth_world.x() + ir_cx_) * ir_fx_ / depth_value);
+			float depth_image_y = ((depth_world.y() + ir_cy_) * ir_fy_ / depth_value);
+			uint16_t true_depth = depth.at<uint16_t>(depth_image_x, depth_image_y);
 
 			itP->z = true_depth;
-			itP->x = ((c - rgb_cx_) / rgb_fx_) * depth_value;
-			itP->y = ((r - rgb_cy_) / rgb_fy_) * depth_value;
-			itP->b = itC->val[0];
-			itP->g = itC->val[1];
-			itP->r = itC->val[2];
+			itP->x = depth_image_x;
+			itP->y = depth_image_y;
+			itP->b = 255;//(color.at<uint8_t>(rgb_world.at<float>(0), rgb_world.at<float>(1)))[0];
+			itP->g = 255;//(color.at<uint8_t>(rgb_world.at<float>(0), rgb_world.at<float>(1)))[1];
+			itP->r = 255;//(color.at<uint8_t>(rgb_world.at<float>(0), rgb_world.at<float>(1)))[2];
 
 		  }
 		}
