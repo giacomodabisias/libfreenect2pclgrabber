@@ -410,22 +410,39 @@ public:
 
 		  for(size_t c = 0; c < (size_t)depth.cols; ++c, ++itP, ++itD, ++itC )
 		  {
-		    register const float depthValue = *itD / 1000.0f;
+		    register const float depth_value = *itD / 1000.0f;
 		    // Check for invalid measurements
 
-			if(isnan(depthValue) || depthValue <= 0.001)
+			if(isnan(depth_value) || depth_value <= 0.001)
 			{
 			   // not valid
 			   itP->x = itP->y = itP->z = badPoint;
 			   itP->rgba = 0;
 			   continue;
-			}
-			itP->z = depthValue;
-			itP->x = ((c - rgb_cx_) / rgb_fx_) * depthValue;
-			itP->y = ((r - rgb_cy_) / rgb_fy_) * depthValue;
+			}/*
+			itP->z = depth_value;
+			itP->x = ((c - rgb_cx_) / rgb_fx_) * depth_value;
+			itP->y = ((r - rgb_cy_) / rgb_fy_) * depth_value;
+			itP->b = itC->val[0];
+			itP->g = itC->val[1];
+			itP->r = itC->val[2];*/
+
+			//to rgb world
+			Eigen::Vector3d rgb_world(((c - rgb_cx_) / rgb_fx_) * depth_value, ((r - rgb_cy_) / rgb_fy_) * depth_value, depth_value);
+			//rgb world to depth world
+			Eigen::Vector3d depth_world = rgb_world * rotation_ + translation_;
+			//depth world to depth image
+			float depth_image_x = (depth_world.x() + ir_cx) * ir_fx / depth_value);
+			float depth_image_y = (depth_world.y() + ir_cy) * ir_fy / depth_value);
+			float true_depth = depth.at<double>(depth_image_x, depth_image_y);
+
+			itP->z = true_depth;
+			itP->x = ((c - rgb_cx_) / rgb_fx_) * depth_value;
+			itP->y = ((r - rgb_cy_) / rgb_fy_) * depth_value;
 			itP->b = itC->val[0];
 			itP->g = itC->val[1];
 			itP->r = itC->val[2];
+
 		  }
 		}
 	}
