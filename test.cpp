@@ -1,8 +1,4 @@
 #include <iostream>
-
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include "Kinect2Grabber.h"
 #include "GL/glew.h"
 
@@ -47,8 +43,9 @@ void findMinMax(const cv::Mat &ir)
 int main(int argc, char *argv[])
 {
   
-  Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
-  
+  //Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
+    Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./rgb_calibration.yaml", "./depth_calibration.yaml", "./pose_calibration.yaml");
+
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 
   cloud = k2g.GetCloud();
