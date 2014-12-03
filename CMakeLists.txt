@@ -11,9 +11,6 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-set(DEPTH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/depth_registration_/)
-set(DEPTH_INCLUDE_DIR ${DEPTH_PATH}/include)
-set(DEPTH_SOURCE_DIR ${DEPTH_PATH}/src)
 
 find_package( OpenCV REQUIRED )
 
@@ -24,14 +21,12 @@ add_definitions(${PCL_DEFINITIONS})
 
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories( ${OpenCV_INCLUDE_DIRS} )
-include_directories( ${DEPTH_INCLUDE_DIR})
-include_directories( ${DEPTH_SOURCE_DIR})
 include_directories( ${GLEW_INCLUDE_DIRS})
 include_directories( ${GLEWF_INCLUDE_DIRS})
 
 add_definitions(-DGLEW_MX -DGLEW_STATIC)
 
-add_executable(Kinect2Grabber test.cpp ${DEPTH_SOURCE_DIR}/depth_registration.cpp ${DEPTH_SOURCE_DIR}/depth_registration_cpu.cpp )
+add_executable(Kinect2Grabber test.cpp )
 
 target_link_libraries(Kinect2Grabber ${CUDA_LIBRARIES} ${OpenCV_LIBS} ${LIBFREENECT2_LIB} ${GLEW_LIB} ${GLFW_LIB} ${PCL_LIBRARIES})
 

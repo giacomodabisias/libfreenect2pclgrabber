@@ -411,8 +411,10 @@ public:
 
 		  for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD, ++itC )
 		  {
-		    register const float depth_value = *itD / 1000.0f;
-		    register const float f = (1920./512.)/(1080./424.);
+		    const float depth_value = *itD / 1000.0f;
+		    const float sy = (1080./848.);
+		    const float sx = (1920./1024.);
+
 
 		    // Check for invalid measurements
 			if(isnan(depth_value) || depth_value <= 0.001)
@@ -432,8 +434,8 @@ public:
 			*/
 
 			//to depth world
-			float final_x = (x - (ir_cx_*f)) / (ir_fx_*f) * depth_value;
-			float final_y = (y - (ir_cy_*f)) / (ir_fy_*f) * depth_value;
+			float final_x = (x - ir_cx_ * sx) / (ir_fx_ * sx) * depth_value;
+			float final_y = (y - ir_cy_ * sy) / (ir_fy_ * sy) * depth_value;
 			Eigen::Vector3d ir_world(final_x, final_y , depth_value);
 
 			//depth world to rgb world
@@ -447,16 +449,19 @@ public:
 			//rgb world to rgb image
 			int rgb_image_x = ((rgb_world.x() * rgb_fx_ / depth_value)) + rgb_cx_;
 			int rgb_image_y = ((rgb_world.y() * rgb_fy_ / depth_value)) + rgb_cy_;
-			
-			itP->z = depth_value;
-			itP->x = final_x;
-			itP->y = final_y;
-			const cv::Vec3b *tmp = color.ptr<cv::Vec3b>(rgb_image_y * depth.cols + rgb_image_y);
-			itP->b = tmp->val[0];
-			itP->g = tmp->val[1];
-			itP->r = tmp->val[2];
+
+			if(rgb_image_x > 0 && rgb_image_x < color.cols && rgb_image_y > 0 && rgb_image_y < color.rows){
+				itP->z = depth_value;
+				itP->x = final_x;
+				itP->y = final_y;
+				const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
+				itP->b = tmp.val[0];
+				itP->g = tmp.val[1];
+				itP->r = tmp.val[2];
+			}
 
 		  }
+
 		}
 	}
 
@@ -550,38 +555,7 @@ public:
 	tmp_depth_.convertTo(tmp_depth_, CV_16U);
 
 	if(init_){
-/*
-		rgb_camera_matrix_ = (cv::Mat_<double>(3,3) <<  
-			color_camera_params_.fx,                0.,               color_camera_params_.cx,
-					0.,                  color_camera_params_.fy,     color_camera_params_.cy,
-			        0.,                             0.,                         1.             );
 
-		depth_camera_matrix_ = (cv::Mat_<double>(3,3) <<
-			ir_camera_params_.fx,                   0.,               ir_camera_params_.cx,
-			        0.,                  ir_camera_params_.fy,        ir_camera_params_.cy,
-			        0.,                             0.,                         1.             );
-				rotation_ = (cv::Mat_<double>(3,3) <<
-			9.9983695759005575e-01, -1.6205694274052811e-02,-7.9645282444769407e-03, 
-			1.6266694212988934e-02, 9.9983838631845712e-01, 7.6547961099503467e-03,
-       		7.8391897822575607e-03, -7.7831045990485416e-03, 9.9993898333166209e-01  );
-
-		rotation_ = (cv::Mat_<double>(3,3) <<
-			0.9998475568818841, -0.0007242182755274449, 0.01744530037623355,
-			 0.0007490890756651889, 0.9999987124352437, -0.00141915235664019,
-            -0.01744425013820719, 0.001432004100563398, 0.9998468120174068 );
-
-		
-		translation_ = (cv::Mat_<double>(3,1) <<
-			0.1927840124258939e-02, -4.5307585220976776e-04, 7.0571985343338605e-05 );
-
-		translation_ = (cv::Mat_<double>(3,1) <<
-			-0.05235922222877874, -0.0002122509177667504, -0.00358717077329887 );
-
-		
-
-		distortion_ = (cv::Mat_<double>(1,5) <<
-			0.08886683884842322, -0.2474225084881365, -0.002864812899835538, -0.0006690936537519126, 0.05729994721039293);  			
-		*/
 		rgb_fx_ = rgb_camera_matrix_.at<double>(0,0);
 		rgb_fy_ = rgb_camera_matrix_.at<double>(1,1);
 		rgb_cx_ = rgb_camera_matrix_.at<double>(0,2);
@@ -590,9 +564,6 @@ public:
 		ir_fy_ = depth_camera_matrix_.at<double>(1,1);
 		ir_cx_ = depth_camera_matrix_.at<double>(0,2);
 		ir_cy_ = depth_camera_matrix_.at<double>(1,2);
-
-
-		//depth_registration_ = new DepthRegistrationCPU();
 
 		size_registered_ = cv::Size(1920, 1080); 
 		size_depth_ = cv::Size(512, 424);
@@ -640,3 +611,34 @@ private:
 };
 
 }
+
+/*
+		rgb_camera_matrix_ = (cv::Mat_<double>(3,3) <<  
+			color_camera_params_.fx,                0.,               color_camera_params_.cx,
+					0.,                  color_camera_params_.fy,     color_camera_params_.cy,
+			        0.,                             0.,                         1.             );
+
+		depth_camera_matrix_ = (cv::Mat_<double>(3,3) <<
+			ir_camera_params_.fx,                   0.,               ir_camera_params_.cx,
+			        0.,                  ir_camera_params_.fy,        ir_camera_params_.cy,
+			        0.,                             0.,                         1.             );
+				rotation_ = (cv::Mat_<double>(3,3) <<
+			9.9983695759005575e-01, -1.6205694274052811e-02,-7.9645282444769407e-03, 
+			1.6266694212988934e-02, 9.9983838631845712e-01, 7.6547961099503467e-03,
+       		7.8391897822575607e-03, -7.7831045990485416e-03, 9.9993898333166209e-01  );
+
+		rotation_ = (cv::Mat_<double>(3,3) <<
+			0.9998475568818841, -0.0007242182755274449, 0.01744530037623355,
+			 0.0007490890756651889, 0.9999987124352437, -0.00141915235664019,
+            -0.01744425013820719, 0.001432004100563398, 0.9998468120174068 );
+
+		
+		translation_ = (cv::Mat_<double>(3,1) <<
+			0.1927840124258939e-02, -4.5307585220976776e-04, 7.0571985343338605e-05 );
+
+		translation_ = (cv::Mat_<double>(3,1) <<
+			-0.05235922222877874, -0.0002122509177667504, -0.00358717077329887 );
+
+		distortion_ = (cv::Mat_<double>(1,5) <<
+			0.08886683884842322, -0.2474225084881365, -0.002864812899835538, -0.0006690936537519126, 0.05729994721039293);  			
+		*/

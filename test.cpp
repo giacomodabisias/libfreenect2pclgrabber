@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
 {
   
   //Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
-    Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./rgb_calibration.yaml", "./depth_calibration.yaml", "./pose_calibration.yaml");
+  Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./rgb_calibration.yaml", "./depth_calibration.yaml", "./pose_calibration.yaml");
 
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 
