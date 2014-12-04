@@ -16,18 +16,18 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <string>
-
+#include <chrono>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define DEPTH_REG_CPU
-bool shutdown = false;  //bad
+bool shutdown = false; 
 
 void sigint_handler(int s)
 {
   shutdown = true;
 }
+namespace pcl {
 
-namespace Kinect2 {
+namespace Kinect2Grabber {
 
 template< typename PointT>
 class Kinect2Grabber
@@ -92,11 +92,15 @@ public:
 
 		cv::FileStorage fs;
 		fs.open(rgb_calibration_file, cv::FileStorage::READ);
+		int x,y;
 		if(fs.isOpened())
-	    {
-	      fs["camera_matrix"] >> rgb_camera_matrix_;
-	      fs["distortion_coefficients"] >> rgb_distortion_;
-	      fs.release();
+	    {	
+	    	fs["image_width"] >> x;
+	    	fs["image_height"] >> y;
+	    	size_rgb_ = cv::Size(x,y);
+			fs["camera_matrix"] >> rgb_camera_matrix_;
+			fs["distortion_coefficients"] >> rgb_distortion_;
+			fs.release();
 	    }else{
 	    	std::cout << "could not find rgb calibration file " << rgb_calibration_file <<std::endl;
 	    	exit(-1);
@@ -106,9 +110,12 @@ public:
 
 	    if(fs.isOpened())
 	    {	    
-	      fs["camera_matrix"] >> depth_camera_matrix_;
-	      fs["distortion_coefficients"] >> depth_distortion_;
-	      fs.release();
+	    	fs["image_width"] >> x;
+	    	fs["image_height"] >> y;
+	    	size_depth_ = cv::Size(x,y);
+			fs["camera_matrix"] >> depth_camera_matrix_;
+			fs["distortion_coefficients"] >> depth_distortion_;
+			fs.release();
 	    }else{
 	    	std::cout << "could not find ir calibration file " << depth_calibration_file <<std::endl;
 	    	exit(-1);
@@ -118,11 +125,11 @@ public:
 
 	    if(fs.isOpened())
 	    {	      
-	      fs["rotation matrix"] >> rotation_;
-	      fs["translation matrix"] >> translation_;
-	      fs["fundamental matrix"] >> fundamental_;
-	      fs["essential matrix"] >> essential_;
-	      fs.release();
+			fs["rotation matrix"] >> rotation_;
+			fs["translation matrix"] >> translation_;
+			fs["fundamental matrix"] >> fundamental_;
+			fs["essential matrix"] >> essential_;
+			fs.release();
 	    }else{
 	    	std::cout << "could not find pose calibration file " << pose_calibration_file <<std::endl;
 	    	exit(-1);
@@ -205,15 +212,15 @@ public:
 		 fs << "square_size_" << square_size_;
 
 		 if( flags & cv::CALIB_FIX_ASPECT_RATIO )
-		     fs << "aspectRatio" << aspect_ratio;
+			fs << "aspectRatio" << aspect_ratio;
 
 		 if( flags != 0 )
 		 {
-		     sprintf( buf, "flags: %s%s%s%s",
-		         flags & cv::CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
-		         flags & cv::CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
-		         flags & cv::CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
-		         flags & cv::CALIB_ZERO_TANGENT_DIST ? "+zero_tangent_dist" : "" );
+			sprintf( buf, "flags: %s%s%s%s",
+			flags & cv::CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
+			flags & cv::CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
+			flags & cv::CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
+			flags & cv::CALIB_ZERO_TANGENT_DIST ? "+zero_tangent_dist" : "" );
 		 }
 
 		 fs << "flags" << flags;
@@ -268,6 +275,8 @@ public:
 
 		    cv::Mat rgb_gray = cv::imread(rgb_name, 0);
 		    cv::Mat ir_gray = cv::imread(ir_name, 0);
+		    size_depth_ = ir_gray.size();
+		    size_rgb_ = rgb_gray.size();
 
 		    std::vector<cv::Point2f > camera1ImagePoints;
 		    bool found1 = cv::findChessboardCorners(rgb_gray, board_size, camera1ImagePoints, cv::CALIB_CB_FAST_CHECK);
@@ -289,13 +298,11 @@ public:
 		calcBoardCornerPositions(board_size, square_size, pointsBoard[0]);
 		pointsBoard.resize(image_number,pointsBoard[0]);
 
-		double error_1 = calibrateCamera(pointsBoard, rgbImagePoints, cv::Size(1920,1080), rgb_camera_matrix_, rgb_distortion_,  rvecs,  tvecs);
-		SaveCameraParams("rgb_calibration.yaml",cv::Size(1920,1080), board_size, square_size, 0, 0, rgb_camera_matrix_, rgb_distortion_, error_1);
+		double error_1 = calibrateCamera(pointsBoard, rgbImagePoints, size_rgb_, rgb_camera_matrix_, rgb_distortion_,  rvecs,  tvecs);
+		SaveCameraParams("rgb_calibration.yaml",size_rgb_, board_size, square_size, 0, 0, rgb_camera_matrix_, rgb_distortion_, error_1);
 
-		
-
-		double error_2 = calibrateCamera(pointsBoard, irImagePoints, cv::Size(1024,848), depth_camera_matrix_, depth_distortion_,  rvecs,  tvecs );
-		SaveCameraParams("depth_calibration.yaml",cv::Size(1024,848), board_size, square_size, 0, 0, depth_camera_matrix_, depth_distortion_, error_2 );
+		double error_2 = calibrateCamera(pointsBoard, irImagePoints, size_depth_, depth_camera_matrix_, depth_distortion_,  rvecs,  tvecs );
+		SaveCameraParams("depth_calibration.yaml",size_depth_, board_size, square_size, 0, 0, depth_camera_matrix_, depth_distortion_, error_2 );
 
 		double rms = cv::stereoCalibrate(pointsBoard, rgbImagePoints, irImagePoints,
 		                rgb_camera_matrix_, rgb_distortion_,
@@ -335,7 +342,14 @@ public:
 
 	libfreenect2::FrameMap *
 	GetRawFrames() {
-	listener_->waitForNewFrame(frames_);
+		//using namespace std::chrono;
+		//static high_resolution_clock::time_point last;
+
+		// auto tnow = high_resolution_clock::now();
+		listener_->waitForNewFrame(frames_);
+		// auto tpost = high_resolution_clock::now();
+		 //std::cout << "delta " << duration_cast<duration<double>>(tpost-last).count()*1000 << " " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
+		 //last = tpost;
 	return &frames_;
 	}
 
@@ -370,97 +384,67 @@ public:
 		listener_->release(frames_);
 	}
 
-	
-	void 
-	CreateLookup()
-	{
-		const double fx = 1.0 / rgb_fx_;
-		const double fy = 1.0 / rgb_fy_;
-		const double cx = rgb_cx_;
-		const double cy = rgb_cy_;
-		double *it;
-
-		lookup_y_ = cv::Mat(1, size_registered_.height, CV_64F);
-		it = lookup_y_.ptr<double>();
-		for(size_t r = 0; r < (size_t)size_registered_.height; ++r, ++it)
-		{
-		*it = (r - cy) * fy;
-		}
-
-		lookup_x_ = cv::Mat(1, size_registered_.width, CV_64F);
-		it = lookup_x_.ptr<double>();
-		for(size_t c = 0; c < (size_t)size_registered_.width; ++c, ++it)
-		{
-		*it = (c - cx) * fx;
-		}
-	}
-
-
 	void 
 	CreateCloud(const cv::Mat &depth, const cv::Mat &color, typename pcl::PointCloud<PointT>::Ptr &cloud) const
 	{
 		const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
-		//#pragma omp parallel for
+		#pragma omp parallel for
 		for(int y = 0; y < depth.rows; ++y)
 		{
-		  PointT *itP = &cloud->points[y * depth.cols];
-		  const uint16_t *itD = depth.ptr<uint16_t>(y);
-		  const cv::Vec3b *itC = color.ptr<cv::Vec3b>(y);
+			PointT *itP = &cloud->points[y * depth.cols];
+			const uint16_t *itD = depth.ptr<uint16_t>(y);
+			const cv::Vec3b *itC = color.ptr<cv::Vec3b>(y);
 
 
-		  for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD, ++itC )
-		  {
-		    const float depth_value = *itD / 1000.0f;
-		    const float sy = (1080./848.);
-		    const float sx = (1920./1024.);
-
-
-		    // Check for invalid measurements
-			if(isnan(depth_value) || depth_value <= 0.001)
+			for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD, ++itC )
 			{
-			   // not valid
-			   itP->x = itP->y = itP->z = badPoint;
-			   itP->rgba = 0;
-			   continue;
+				const float depth_value = *itD / 1000.0f;
+				// Check for invalid measurements
+				if(isnan(depth_value) || depth_value <= 0.001)
+				{
+					// not valid
+					itP->x = itP->y = itP->z = badPoint;
+					itP->rgba = 0;
+					continue;
+				}
+				/*
+				itP->z = depth_value ;
+				itP->x = (x - ir_cx_) / (ir_fx_) * depth_value;
+				itP->y = (y - ir_cy_) / (ir_fy_ ) * depth_value;
+				itP->b = 255;//itC->val[0];
+				itP->g = 255;//itC->val[1];
+				itP->r = 255;//itC->val[2];
+				*/
+
+				//to depth world
+				float final_x = (x - ir_cx_ ) / (ir_fx_ ) * depth_value;
+				float final_y = (y - ir_cy_ ) / (ir_fy_ ) * depth_value;
+				Eigen::Vector3d ir_world(final_x, final_y , depth_value);
+
+				//depth world to rgb world
+				Eigen::Map<Eigen::Matrix<double,3,3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
+				Eigen::Matrix3d rotation = mappedMat;
+				Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
+				Eigen::Vector3d translation = mappedMat2;
+
+				Eigen::Vector3d rgb_world = rotation * ir_world + translation;
+
+				//rgb world to rgb image
+				int rgb_image_x = ((rgb_world.x() * (rgb_fx_ ) / depth_value)) + rgb_cx_ ;
+				int rgb_image_y = ((rgb_world.y() * (rgb_fy_ ) / depth_value)) + rgb_cy_ ;
+
+				if(rgb_image_x > 0 && rgb_image_x < color.cols && rgb_image_y > 0 && rgb_image_y < color.rows){
+					itP->z = depth_value;
+					itP->x = final_x;
+					itP->y = final_y;
+					const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
+					itP->b = tmp.val[0];
+					itP->g = tmp.val[1];
+					itP->r = tmp.val[2];
+				}
+
 			}
-			/*
-			itP->z = depth_value ;
-			itP->x = (x - ir_cx_) / (ir_fx_) * depth_value;
-			itP->y = (y - ir_cy_) / (ir_fy_ ) * depth_value;
-			itP->b = 255;//itC->val[0];
-			itP->g = 255;//itC->val[1];
-			itP->r = 255;//itC->val[2];
-			*/
-
-			//to depth world
-			float final_x = (x - ir_cx_ * sx) / (ir_fx_ * sx) * depth_value;
-			float final_y = (y - ir_cy_ * sy) / (ir_fy_ * sy) * depth_value;
-			Eigen::Vector3d ir_world(final_x, final_y , depth_value);
-
-			//depth world to rgb world
-			Eigen::Map<Eigen::Matrix<double,3,3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
-			Eigen::Matrix3d rotation = mappedMat;
-			Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
-			Eigen::Vector3d translation = mappedMat2;
-
-			Eigen::Vector3d rgb_world = rotation * ir_world + translation;
-
-			//rgb world to rgb image
-			int rgb_image_x = ((rgb_world.x() * rgb_fx_ / depth_value)) + rgb_cx_;
-			int rgb_image_y = ((rgb_world.y() * rgb_fy_ / depth_value)) + rgb_cy_;
-
-			if(rgb_image_x > 0 && rgb_image_x < color.cols && rgb_image_y > 0 && rgb_image_y < color.rows){
-				itP->z = depth_value;
-				itP->x = final_x;
-				itP->y = final_y;
-				const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
-				itP->b = tmp.val[0];
-				itP->g = tmp.val[1];
-				itP->r = tmp.val[2];
-			}
-
-		  }
 
 		}
 	}
@@ -468,18 +452,18 @@ public:
 	void 
 	RemapDepth(const cv::Mat &depth, cv::Mat &scaled, const cv::Size size_registered) const
 	{
-	  scaled.create(size_registered, CV_16U);
-	  #pragma omp parallel for
-	  for(size_t r = 0; r < (size_t)size_registered.height; ++r)
-	  {
-	    uint16_t *itO = scaled.ptr<uint16_t>(r);
-	    const float *itX = map_x_.ptr<float>(r);
-	    const float *itY = map_y_.ptr<float>(r);
-	    for(size_t c = 0; c < (size_t)size_registered.width; ++c, ++itO, ++itX, ++itY)
-	    {
-	      *itO = Interpolate(depth, *itX, *itY);
-	    }
-	  }
+		scaled.create(size_registered, CV_16U);
+		#pragma omp parallel for
+		for(size_t r = 0; r < (size_t)size_registered.height; ++r)
+		{
+			uint16_t *itO = scaled.ptr<uint16_t>(r);
+			const float *itX = map_x_.ptr<float>(r);
+			const float *itY = map_y_.ptr<float>(r);
+			for(size_t c = 0; c < (size_t)size_registered.width; ++c, ++itO, ++itX, ++itY)
+			{
+				*itO = Interpolate(depth, *itX, *itY);
+			}
+		}
 	}
 
 	inline uint16_t 
@@ -543,7 +527,7 @@ public:
 
 
   typename pcl::PointCloud<PointT>::Ptr
-  GetCloud(){
+  GetCloud(int size_x = 512, int size_y = 424){
 	
 	frames_ =  *GetRawFrames();
 	rgb_ = frames_[libfreenect2::Frame::Color];
@@ -556,37 +540,31 @@ public:
 
 	if(init_){
 
-		rgb_fx_ = rgb_camera_matrix_.at<double>(0,0);
-		rgb_fy_ = rgb_camera_matrix_.at<double>(1,1);
-		rgb_cx_ = rgb_camera_matrix_.at<double>(0,2);
-		rgb_cy_ = rgb_camera_matrix_.at<double>(1,2);
-		ir_fx_ = depth_camera_matrix_.at<double>(0,0);
-		ir_fy_ = depth_camera_matrix_.at<double>(1,1);
-		ir_cx_ = depth_camera_matrix_.at<double>(0,2);
-		ir_cy_ = depth_camera_matrix_.at<double>(1,2);
+		const float sx_depth =  ((float)size_x / (float)size_depth_.width);
+		const float sy_depth =  ((float)size_y / (float)size_depth_.height);
+		const float sx_rgb = ((float)size_x / (float)size_rgb_.width);
+		const float sy_rgb =  ((float)size_y / (float)size_rgb_.height);
 
-		size_registered_ = cv::Size(1920, 1080); 
-		size_depth_ = cv::Size(512, 424);
+		rgb_fx_ = rgb_camera_matrix_.at<double>(0,0) * sx_rgb;
+		rgb_fy_ = rgb_camera_matrix_.at<double>(1,1) * sy_rgb;
+		rgb_cx_ = rgb_camera_matrix_.at<double>(0,2) * sx_rgb;
+		rgb_cy_ = rgb_camera_matrix_.at<double>(1,2) * sy_rgb;
+		ir_fx_ = depth_camera_matrix_.at<double>(0,0) * sx_depth;
+		ir_fy_ = depth_camera_matrix_.at<double>(1,1) * sy_depth;
+		ir_cx_ = depth_camera_matrix_.at<double>(0,2) * sx_depth;
+		ir_cy_ = depth_camera_matrix_.at<double>(1,2) * sy_depth;
 
-		cloud_->height = size_registered_.height;
-		cloud_->width = size_registered_.width;
+		cloud_->height = size_y;
+		cloud_->width = size_x;
 		cloud_->is_dense = false;
 		cloud_->points.resize(cloud_->height * cloud_->width);
-		/*
-		depth_registration_->init(rgb_camera_matrix_,
-						size_registered_,
-					    depth_camera_matrix_,
-					    size_depth_,
-					    depth_distortion_,
-						rotation_, 
-						translation_ );*/
-		cv::initUndistortRectifyMap(depth_camera_matrix_, depth_distortion_, cv::Mat(), rgb_camera_matrix_, size_registered_, CV_32FC1, map_x_, map_y_);
+
+		cv::initUndistortRectifyMap(depth_camera_matrix_, depth_distortion_, cv::Mat(), rgb_camera_matrix_, cv::Size(size_x,size_y), CV_32FC1, map_x_, map_y_);
 		init_ =  false;
 	}
 	
-	//depth_registration_->registerDepth(tmp_depth_, registered_ );
-	RemapDepth(tmp_depth_, registered_, size_registered_);
-	CreateCloud(registered_, tmp_rgb_, cloud_);
+	cv::resize(tmp_rgb_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
+	CreateCloud(tmp_depth_, rgb_scaled_, cloud_);
 	
 	return cloud_;
   }
@@ -597,11 +575,10 @@ private:
 	libfreenect2::Freenect2Device * dev_ = 0;
 	libfreenect2::SyncMultiFrameListener * listener_ = 0;
 	libfreenect2::FrameMap frames_;
-	//DepthRegistration * depth_registration_ = 0;
-	cv::Mat scaled_, registered_, map_x_, map_y_;
+	cv::Mat scaled_, registered_, map_x_, map_y_, rgb_scaled_;
 	cv::Mat rotation_, translation_, essential_, fundamental_;
 	libfreenect2::Frame *depth_, *rgb_;
-	cv::Size size_registered_, size_depth_;
+	cv::Size size_registered_, size_depth_, size_rgb_;
 	cv::Mat lookup_y_, lookup_x_, tmp_depth_, tmp_rgb_;
 	typename pcl::PointCloud<PointT>::Ptr cloud_;
   	cv::Mat rgb_camera_matrix_, depth_distortion_, depth_camera_matrix_, rgb_distortion_;
@@ -612,33 +589,4 @@ private:
 
 }
 
-/*
-		rgb_camera_matrix_ = (cv::Mat_<double>(3,3) <<  
-			color_camera_params_.fx,                0.,               color_camera_params_.cx,
-					0.,                  color_camera_params_.fy,     color_camera_params_.cy,
-			        0.,                             0.,                         1.             );
-
-		depth_camera_matrix_ = (cv::Mat_<double>(3,3) <<
-			ir_camera_params_.fx,                   0.,               ir_camera_params_.cx,
-			        0.,                  ir_camera_params_.fy,        ir_camera_params_.cy,
-			        0.,                             0.,                         1.             );
-				rotation_ = (cv::Mat_<double>(3,3) <<
-			9.9983695759005575e-01, -1.6205694274052811e-02,-7.9645282444769407e-03, 
-			1.6266694212988934e-02, 9.9983838631845712e-01, 7.6547961099503467e-03,
-       		7.8391897822575607e-03, -7.7831045990485416e-03, 9.9993898333166209e-01  );
-
-		rotation_ = (cv::Mat_<double>(3,3) <<
-			0.9998475568818841, -0.0007242182755274449, 0.01744530037623355,
-			 0.0007490890756651889, 0.9999987124352437, -0.00141915235664019,
-            -0.01744425013820719, 0.001432004100563398, 0.9998468120174068 );
-
-		
-		translation_ = (cv::Mat_<double>(3,1) <<
-			0.1927840124258939e-02, -4.5307585220976776e-04, 7.0571985343338605e-05 );
-
-		translation_ = (cv::Mat_<double>(3,1) <<
-			-0.05235922222877874, -0.0002122509177667504, -0.00358717077329887 );
-
-		distortion_ = (cv::Mat_<double>(1,5) <<
-			0.08886683884842322, -0.2474225084881365, -0.002864812899835538, -0.0006690936537519126, 0.05729994721039293);  			
-		*/
+}
