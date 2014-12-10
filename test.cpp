@@ -20,12 +20,12 @@ int main(int argc, char *argv[])
   //The parameters are: rgb image folder, depth image folder, number of images, size of the checkboard, size of the check board squares in m
   //The second constructor load an existing calibration
   
-  //Kinect2::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
-  pcl::Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./rgb_calibration.yaml", "./depth_calibration.yaml", "./pose_calibration.yaml");
+  //Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
+  Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./rgb_calibration.yaml", "./depth_calibration.yaml", "./pose_calibration.yaml");
 
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 
-  cloud = k2g.GetCloud();
+  cloud = k2g.getCloud();
 
   cloud->sensor_orientation_.w () = 0.0;
   cloud->sensor_orientation_.x () = 1.0;
@@ -40,12 +40,12 @@ int main(int argc, char *argv[])
   
   while (!viewer->wasStopped ()) {
     viewer->spinOnce ();
-    cloud = k2g.GetCloud();
+    cloud = k2g.getCloud();
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
     viewer->updatePointCloud<pcl::PointXYZRGB> (cloud,rgb, "sample cloud"); 
   }
 
-  k2g.ShutDown();
+  k2g.shutDown();
   return 0;
 }
 
