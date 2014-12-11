@@ -36,6 +36,8 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <sys/time.h>
+#include <stdint.h>
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool shut_down = false; 
 
@@ -547,13 +549,17 @@ public:
 
 	void
 	serializeFrames(const cv::Mat &depth,const cv::Mat &color)
-	{
+	{	
+		struct timeval tv;
+    	gettimeofday(&tv,NULL);
+    	uint64_t now = tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
 		if(file_streamer_ == 0){
 			file_streamer_ = new std::ofstream();
 			file_streamer_->open ("stream", std::ios::binary);
 			oa_ = new boost::archive::binary_oarchive(*file_streamer_);
 		}
-		(*oa_) << depth << color;
+
+		(*oa_) << now << depth << color;
 	}
 
 	void 
