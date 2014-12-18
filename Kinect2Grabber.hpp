@@ -38,6 +38,7 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <sys/time.h>
 #include <stdint.h>
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool shut_down = false; 
 
@@ -47,7 +48,7 @@ namespace serialization {
  
     /** Serialization support for cv::Mat */
     template <class Archive>
-    void save(Archive & ar, const ::cv::Mat& m, const unsigned int version)
+    void save(Archive & ar, const ::cv::Mat & m, const unsigned int version)
     {
 		size_t elem_size = m.elemSize();
 		size_t elem_type = m.type();
@@ -80,6 +81,7 @@ namespace serialization {
     }
  
 }
+
 }
 void sigintHandler(int s)
 {
@@ -93,8 +95,8 @@ class Kinect2Grabber
 {
 public:
 
-	Kinect2Grabber( const std::string rgb_image_folder_path, const std::string depth_image_folder_path, const int image_number, const cv::Size board_size, const double square_size): 
-				     serialize_(false)
+	Kinect2Grabber( const std::string rgb_image_folder_path, const std::string depth_image_folder_path, const int image_number, const cv::Size & board_size, const double square_size): 
+				    serialize_(false)
 	{
 		glfwInit();
 		dev_ = freenect2_.openDefaultDevice();
@@ -118,7 +120,7 @@ public:
 		init();
 	}
 
-	Kinect2Grabber(const std::string rgb_calibration_file, const std::string depth_calibration_file, const std::string pose_calibration_file ): serialize_(false)
+	Kinect2Grabber( const std::string rgb_calibration_file, const std::string depth_calibration_file, const std::string pose_calibration_file ): serialize_(false)
 	{
 
 		glfwInit();
@@ -149,101 +151,6 @@ public:
 		this->shutDown();
 		if(file_streamer_->is_open())
 			file_streamer_->close();
-	}
-
-	void initsizesandud(int size_x=512 , int size_y=424)
-	{
-	
-		const float sx_depth =  ((float)size_x / (float)calibsize_depth_.width);
-		const float sy_depth =  ((float)size_y / (float)calibsize_depth_.height);
-		const float sx_rgb = ((float)size_x / (float)calibsize_rgb_.width);
-		const float sy_rgb =  ((float)size_y / (float)calibsize_rgb_.height);
-
-		size_.width = size_x;
-		size_.height = size_y;
-
-		depth_camera_matrix_ = calibdepth_camera_matrix_;
-		depth_camera_matrix_.at<double>(0,0) *= sx_depth;
-		depth_camera_matrix_.at<double>(1,1) *= sy_depth;
-		depth_camera_matrix_.at<double>(0,2) *= sx_depth;
-		depth_camera_matrix_.at<double>(1,2) *= sy_depth;
-
-		rgb_camera_matrix_ = calibrgb_camera_matrix_;
-		rgb_camera_matrix_.at<double>(0,0) *= sx_rgb;
-		rgb_camera_matrix_.at<double>(1,1) *= sy_rgb;
-		rgb_camera_matrix_.at<double>(0,2) *= sx_rgb;
-		rgb_camera_matrix_.at<double>(1,2) *= sy_rgb;
-
-		ir_fx_ = depth_camera_matrix_.at<double>(0,0);
-		ir_fy_ = depth_camera_matrix_.at<double>(1,1);
-		ir_cx_ = depth_camera_matrix_.at<double>(0,2);
-		ir_cy_ = depth_camera_matrix_.at<double>(1,2);
-
-		rgb_fx_ = rgb_camera_matrix_.at<double>(0,0);
-		rgb_fy_ = rgb_camera_matrix_.at<double>(1,1);
-		rgb_cx_ = rgb_camera_matrix_.at<double>(0,2);
-		rgb_cy_ = rgb_camera_matrix_.at<double>(1,2);
-
-		cv::initUndistortRectifyMap(depth_camera_matrix_, depth_distortion_, cv::Mat(), depth_camera_matrix_, cv::Size(size_x,size_y), CV_32FC1, map_x_depth_, map_y_depth_);
-		cv::initUndistortRectifyMap(rgb_camera_matrix_, rgb_distortion_, cv::Mat(), rgb_camera_matrix_,  cv::Size(size_x,size_y), CV_32FC1, map_x_rgb_, map_y_rgb_);
-
-	}
-
-	void
-	init(int size_x=512 , int size_y=424){
-		initsizesandud(size_x,size_y);
-		unsigned threads = omp_get_max_threads();
-		partial_clouds_ = new std::vector<std::vector<PointT>>(threads);
-		distance_ = 0.001;
-	}
- 
-	void
-	loadCalibration(const std::string rgb_calibration_file, const std::string depth_calibration_file, const std::string pose_calibration_file ){
-
-		cv::FileStorage fs;
-		fs.open(rgb_calibration_file, cv::FileStorage::READ);
-		int x,y;
-		if(fs.isOpened())
-	    {	
-	    	fs["image_width"] >> x;
-	    	fs["image_height"] >> y;
-	    	calibsize_rgb_ = cv::Size(x,y);
-			fs["camera_matrix"] >> calibrgb_camera_matrix_;
-			fs["distortion_coefficients"] >> rgb_distortion_;
-			fs.release();
-	    }else{
-	    	std::cout << "could not find rgb calibration file " << rgb_calibration_file <<std::endl;
-	    	exit(-1);
-	    }
-
-	    fs.open(depth_calibration_file, cv::FileStorage::READ);
-
-	    if(fs.isOpened())
-	    {	    
-	    	fs["image_width"] >> x;
-	    	fs["image_height"] >> y;
-	    	calibsize_depth_ = cv::Size(x,y);
-			fs["camera_matrix"] >> calibdepth_camera_matrix_;
-			fs["distortion_coefficients"] >> depth_distortion_;
-			fs.release();
-	    }else{
-	    	std::cout << "could not find ir calibration file " << depth_calibration_file <<std::endl;
-	    	exit(-1);
-	    }
-
-	    fs.open(pose_calibration_file, cv::FileStorage::READ);
-
-	    if(fs.isOpened())
-	    {	      
-			fs["rotation matrix"] >> rotation_;
-			fs["translation matrix"] >> translation_;
-			fs["fundamental matrix"] >> fundamental_;
-			fs["essential matrix"] >> essential_;
-			fs.release();
-	    }else{
-	    	std::cout << "could not find pose calibration file " << pose_calibration_file <<std::endl;
-	    	exit(-1);
-	    }
 	}
 
 	void
@@ -290,150 +197,8 @@ public:
 	}
 
 	void
-	setDistance(float dist){
+	setDistance(const float dist){
 		distance_ = dist;
-	}
-
-	void 
-	calcBoardCornerPositions(const cv::Size board_size, const float square_size_, std::vector<cv::Point3f>& corners)
-	{
-	    corners.clear();
-	        for( int i = 0; i < board_size.height; ++i )
-	            for( int j = 0; j < board_size.width; ++j )
-	                corners.push_back(cv::Point3f(float( j*square_size_ ), float( i*square_size_ ), 0));
-	}
-
-	void 
-	saveCameraParams( const std::string& filename, const cv::Size image_size,
-					  const cv::Size board_size, const float square_size_,
-					  const float aspect_ratio, const int flags,
-                      const cv::Mat& camera_matrix, const cv::Mat& distortion,
-                      const double total_error ) const {
-
-		cv::FileStorage fs( filename, cv::FileStorage::WRITE );
-
-		time_t t;
-		time( &t );
-		struct tm *t2 = localtime( &t );
-		char buf[1024];
-		strftime( buf, sizeof(buf)-1, "%c", t2 );
-
-		fs << "calibration_time" << buf;
-		fs << "image_width" << image_size.width;
-		fs << "image_height" << image_size.height;
-		fs << "board_width" << board_size.width;
-		fs << "board_height" << board_size.height;
-		fs << "square_size_" << square_size_;
-
-		if( flags & cv::CALIB_FIX_ASPECT_RATIO )
-		fs << "aspectRatio" << aspect_ratio;
-
-		if( flags != 0 )
-		{
-		sprintf( buf, "flags: %s%s%s%s",
-		flags & cv::CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
-		flags & cv::CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
-		flags & cv::CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
-		flags & cv::CALIB_ZERO_TANGENT_DIST ? "+zero_tangent_dist" : "" );
-		}
-
-		fs << "flags" << flags;
-		fs << "camera_matrix" << camera_matrix;
-		fs << "distortion_coefficients" << distortion;
-		fs << "avg_reprojection_error" << total_error;
- 	}
-
- 	void 
-	savePoseParams( const std::string& filename,
-                    const cv::Mat & rotation, const cv::Mat & translation,
-                    const cv::Mat & essential, const cv::Mat & fundamental,
-                    const double total_error ) const
-	{
-
-		 cv::FileStorage fs( filename, cv::FileStorage::WRITE );
-
-		 time_t t;
-		 time( &t );
-		 struct tm *t2 = localtime( &t );
-		 char buf[1024];
-		 strftime( buf, sizeof(buf)-1, "%c", t2 );
-
-		 fs << "calibration_time" << buf;
-		 fs << "rotation matrix" << rotation;
-		 fs << "translation matrix" << translation;
-		 fs << "essential matrix" << essential;
-		 fs << "fundamental matrix" << fundamental;
-		 fs << "avg_reprojection_error" << total_error;
- 	}
-
-	void
-	calibrateCamera(std::string rgb_image_folder_path, std::string depth_image_folder_path, int image_number, cv::Size board_size, double square_size){
-
-		const cv::TermCriteria term_criteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 50, DBL_EPSILON);
-		std::vector<std::vector<cv::Point2f>> rgbImagePoints;
-  		std::vector<std::vector<cv::Point2f>> irImagePoints;
-  		std::vector<cv::Mat> rvecs, tvecs;
-
-
-  		if(rgb_image_folder_path.back() != '/')
-  			rgb_image_folder_path += std::string("/");
-
-  		if(depth_image_folder_path.back() != '/')
-  			depth_image_folder_path += std::string("/");
-
-		int count = 0;
-		for(int i = 0; i < image_number; ++i, ++count){
-
-			std::string rgb_name = rgb_image_folder_path + std::string("rgb_image_") + std::to_string(count) + std::string(".jpg");
-		    std::string ir_name = depth_image_folder_path + std::string("ir_image_") + std::to_string(count) + std::string(".jpg");
-		 
-		    cv::Mat rgb_gray = cv::imread(rgb_name, 0);
-		    cv::Mat ir_gray = cv::imread(ir_name, 0);
-
-		    calibsize_depth_ = ir_gray.size();
-		    calibsize_rgb_ = rgb_gray.size();
-		    std::vector<cv::Point2f > camera1ImagePoints;
-		    bool found1 = cv::findChessboardCorners(rgb_gray, board_size, camera1ImagePoints, cv::CALIB_CB_FAST_CHECK);
-
-		    std::vector<cv::Point2f> camera2ImagePoints;
-		    bool found2 = cv::findChessboardCorners(ir_gray, board_size, camera2ImagePoints, cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE);
-
-		    if(found1){
-		    	cv::cornerSubPix(rgb_gray, camera1ImagePoints, cv::Size(11, 11), cv::Size(-1, -1), term_criteria);
-		    	rgbImagePoints.push_back(camera1ImagePoints);
-		    }
-
-		    if(found2){
-			    cv::cornerSubPix(ir_gray, camera2ImagePoints, cv::Size(11, 11), cv::Size(-1, -1), term_criteria);
-			    irImagePoints.push_back(camera2ImagePoints);
-			}
-		}
-
-		std::vector<std::vector<cv::Point3f> > pointsBoard(1);
-		calcBoardCornerPositions(board_size, square_size, pointsBoard[0]);
-		pointsBoard.resize(image_number,pointsBoard[0]);
-		double error_1 = cv::calibrateCamera(pointsBoard, rgbImagePoints, calibsize_rgb_, calibrgb_camera_matrix_, rgb_distortion_,  rvecs,  tvecs);
-		saveCameraParams("rgb_calibration.yaml",calibsize_rgb_, board_size, square_size, 0, 0, calibrgb_camera_matrix_, rgb_distortion_, error_1);
-
-		double error_2 = cv::calibrateCamera(pointsBoard, irImagePoints, calibsize_depth_, calibdepth_camera_matrix_, depth_distortion_,  rvecs,  tvecs );
-		saveCameraParams("depth_calibration.yaml",calibsize_depth_, board_size, square_size, 0, 0, calibdepth_camera_matrix_, depth_distortion_, error_2 );
-
-		double rms = cv::stereoCalibrate(pointsBoard, rgbImagePoints, irImagePoints,
-		                calibrgb_camera_matrix_, rgb_distortion_,
-		                calibdepth_camera_matrix_, depth_distortion_,
-		                calibsize_rgb_, rotation_, translation_, essential_, fundamental_,
-		                cv::CALIB_FIX_INTRINSIC,
-		                term_criteria
-		                );
-
-		printCalibration();
-
-		std::cout << std::endl;
-		std::cout << "rgb error:" << error_1 <<std::endl;
-		std::cout << "depth error:" << error_2 <<std::endl;
-		std::cout << "stereo error " << rms << std::endl;
-
-		savePoseParams("pose_calibration.yaml", rotation_, translation_, essential_, fundamental_, rms);
 	}
 
 	libfreenect2::Frame *
@@ -508,8 +273,317 @@ public:
 		listener_->release(frames_);
 	}
 
+	void
+	enableSerialization(){
+		serialize_ = true;
+	}
+
+	void
+	disableSerialization(){
+		serialize_ = false;
+	}
+
+	//returns a cloud with NaN points and fixed size (512*424)
+	typename pcl::PointCloud<PointT>::Ptr
+	getFullCloud(const int size_x = 512, const int size_y = 424){
+
+		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
+		cloud_->is_dense = false;
+		cloud_->points.resize(size_x * size_y);
+
+		frames_ =  *getRawFrames();
+		rgb_ = frames_[libfreenect2::Frame::Color];
+		depth_ = frames_[libfreenect2::Frame::Depth];
+		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
+		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
+
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
+		rgb_final_ = tmp_rgb_;
+		cv::flip(depth_final_, depth_final_, 1);
+		cv::flip(rgb_final_, rgb_final_, 1);
+		depth_final_.convertTo(tmp_depth_, CV_16U);
+
+		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
+
+		if(serialize_)
+			serializeFrames(tmp_depth_, rgb_scaled_);
+		createFullCloud(tmp_depth_, rgb_scaled_, cloud_);
+		listener_->release(frames_);
+		return cloud_;
+	}
+
+	//returns a cloud without NaN points or points with distance greather than distance_
+	typename pcl::PointCloud<PointT>::Ptr
+	getCloud(const int size_x = 512, const int size_y = 424){
+
+		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
+		cloud_->is_dense = false;
+		
+		frames_ =  *getRawFrames();
+		rgb_ = frames_[libfreenect2::Frame::Color];
+		depth_ = frames_[libfreenect2::Frame::Depth];
+		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
+		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
+
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
+		rgb_final_ = tmp_rgb_;
+		cv::flip(depth_final_, depth_final_, 1);
+		cv::flip(rgb_final_, rgb_final_, 1);
+		depth_final_.convertTo(tmp_depth_, CV_16U);
+
+		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
+
+		if(serialize_)
+			serializeFrames(tmp_depth_, rgb_scaled_);
+		for(int i = 0; i < partial_clouds_.size(); ++i)
+			partial_clouds_[i].clear();
+		createCloud(tmp_depth_, rgb_scaled_, cloud_);
+		listener_->release(frames_);
+		return cloud_;
+	}
+
+private:
+
+	void initsizesandud(const int size_x=512 , const int size_y=424)
+	{
+	
+		const float sx_depth =  ((float)size_x / (float)calibsize_depth_.width);
+		const float sy_depth =  ((float)size_y / (float)calibsize_depth_.height);
+		const float sx_rgb = ((float)size_x / (float)calibsize_rgb_.width);
+		const float sy_rgb =  ((float)size_y / (float)calibsize_rgb_.height);
+
+		depth_camera_matrix_ = calibdepth_camera_matrix_;
+		depth_camera_matrix_.at<double>(0,0) *= sx_depth;
+		depth_camera_matrix_.at<double>(1,1) *= sy_depth;
+		depth_camera_matrix_.at<double>(0,2) *= sx_depth;
+		depth_camera_matrix_.at<double>(1,2) *= sy_depth;
+
+		rgb_camera_matrix_ = calibrgb_camera_matrix_;
+		rgb_camera_matrix_.at<double>(0,0) *= sx_rgb;
+		rgb_camera_matrix_.at<double>(1,1) *= sy_rgb;
+		rgb_camera_matrix_.at<double>(0,2) *= sx_rgb;
+		rgb_camera_matrix_.at<double>(1,2) *= sy_rgb;
+
+		ir_fx_ = depth_camera_matrix_.at<double>(0,0);
+		ir_fy_ = depth_camera_matrix_.at<double>(1,1);
+		ir_cx_ = depth_camera_matrix_.at<double>(0,2);
+		ir_cy_ = depth_camera_matrix_.at<double>(1,2);
+
+		rgb_fx_ = rgb_camera_matrix_.at<double>(0,0);
+		rgb_fy_ = rgb_camera_matrix_.at<double>(1,1);
+		rgb_cx_ = rgb_camera_matrix_.at<double>(0,2);
+		rgb_cy_ = rgb_camera_matrix_.at<double>(1,2);
+
+		cv::initUndistortRectifyMap(depth_camera_matrix_, depth_distortion_, cv::Mat(), depth_camera_matrix_, cv::Size(size_x,size_y), CV_32FC1, map_x_depth_, map_y_depth_);
+		cv::initUndistortRectifyMap(rgb_camera_matrix_, rgb_distortion_, cv::Mat(), rgb_camera_matrix_,  cv::Size(size_x,size_y), CV_32FC1, map_x_rgb_, map_y_rgb_);
+
+	}
+
+	void
+	init(const int size_x=512 , const int size_y=424){
+		initsizesandud(size_x,size_y);
+		unsigned threads = omp_get_max_threads();
+		partial_clouds_.resize(threads);
+		for(int i = 0; i < threads; ++i)
+			partial_clouds_[i].reserve((size_x * size_y) / threads + 1 );
+		distance_ = 0.001;
+	}
+ 
+	void
+	loadCalibration(const std::string rgb_calibration_file, const std::string depth_calibration_file, const std::string pose_calibration_file ){
+
+		cv::FileStorage fs;
+		fs.open(rgb_calibration_file, cv::FileStorage::READ);
+		int x,y;
+		if(fs.isOpened())
+	    {	
+	    	fs["image_width"] >> x;
+	    	fs["image_height"] >> y;
+	    	calibsize_rgb_ = cv::Size(x,y);
+			fs["camera_matrix"] >> calibrgb_camera_matrix_;
+			fs["distortion_coefficients"] >> rgb_distortion_;
+			fs.release();
+	    }else{
+	    	std::cout << "could not find rgb calibration file " << rgb_calibration_file <<std::endl;
+	    	exit(-1);
+	    }
+
+	    fs.open(depth_calibration_file, cv::FileStorage::READ);
+
+	    if(fs.isOpened())
+	    {	    
+	    	fs["image_width"] >> x;
+	    	fs["image_height"] >> y;
+	    	calibsize_depth_ = cv::Size(x,y);
+			fs["camera_matrix"] >> calibdepth_camera_matrix_;
+			fs["distortion_coefficients"] >> depth_distortion_;
+			fs.release();
+	    }else{
+	    	std::cout << "could not find ir calibration file " << depth_calibration_file <<std::endl;
+	    	exit(-1);
+	    }
+
+	    fs.open(pose_calibration_file, cv::FileStorage::READ);
+
+	    if(fs.isOpened())
+	    {	      
+			fs["rotation matrix"] >> rotation_;
+			fs["translation matrix"] >> translation_;
+			fs["fundamental matrix"] >> fundamental_;
+			fs["essential matrix"] >> essential_;
+			fs.release();
+	    }else{
+	    	std::cout << "could not find pose calibration file " << pose_calibration_file <<std::endl;
+	    	exit(-1);
+	    }
+	}
+
 	void 
-	createFullCloud(const cv::Mat &depth, const cv::Mat &color, typename pcl::PointCloud<PointT>::Ptr &cloud) const
+	calcBoardCornerPositions(const cv::Size & board_size, const float square_size_, std::vector<cv::Point3f> & corners)
+	{
+	    corners.clear();
+	        for( int i = 0; i < board_size.height; ++i )
+	            for( int j = 0; j < board_size.width; ++j )
+	                corners.push_back(cv::Point3f(float( j*square_size_ ), float( i*square_size_ ), 0));
+	}
+
+	void 
+	saveCameraParams( const std::string & filename, const cv::Size & image_size,
+					  const cv::Size & board_size, const float square_size_,
+					  const float aspect_ratio, const int flags,
+                      const cv::Mat & camera_matrix, const cv::Mat & distortion,
+                      const double total_error ) const {
+
+		cv::FileStorage fs( filename, cv::FileStorage::WRITE );
+
+		time_t t;
+		time( &t );
+		struct tm *t2 = localtime( &t );
+		char buf[1024];
+		strftime( buf, sizeof(buf)-1, "%c", t2 );
+
+		fs << "calibration_time" << buf;
+		fs << "image_width" << image_size.width;
+		fs << "image_height" << image_size.height;
+		fs << "board_width" << board_size.width;
+		fs << "board_height" << board_size.height;
+		fs << "square_size_" << square_size_;
+
+		if( flags & cv::CALIB_FIX_ASPECT_RATIO )
+		fs << "aspectRatio" << aspect_ratio;
+
+		if( flags != 0 )
+		{
+		sprintf( buf, "flags: %s%s%s%s",
+		flags & cv::CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
+		flags & cv::CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
+		flags & cv::CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
+		flags & cv::CALIB_ZERO_TANGENT_DIST ? "+zero_tangent_dist" : "" );
+		}
+
+		fs << "flags" << flags;
+		fs << "camera_matrix" << camera_matrix;
+		fs << "distortion_coefficients" << distortion;
+		fs << "avg_reprojection_error" << total_error;
+ 	}
+
+ 	void 
+	savePoseParams( const std::string & filename,
+                    const cv::Mat & rotation, const cv::Mat & translation,
+                    const cv::Mat & essential, const cv::Mat & fundamental,
+                    const double total_error ) const
+	{
+
+		 cv::FileStorage fs( filename, cv::FileStorage::WRITE );
+
+		 time_t t;
+		 time( &t );
+		 struct tm *t2 = localtime( &t );
+		 char buf[1024];
+		 strftime( buf, sizeof(buf)-1, "%c", t2 );
+
+		 fs << "calibration_time" << buf;
+		 fs << "rotation matrix" << rotation;
+		 fs << "translation matrix" << translation;
+		 fs << "essential matrix" << essential;
+		 fs << "fundamental matrix" << fundamental;
+		 fs << "avg_reprojection_error" << total_error;
+ 	}
+
+	void
+	calibrateCamera(const std::string & rgb_image_folder_path, const std::string & depth_image_folder_path, int image_number,const cv::Size & board_size, const double square_size){
+
+		const cv::TermCriteria term_criteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 50, DBL_EPSILON);
+		std::vector<std::vector<cv::Point2f>> rgbImagePoints;
+  		std::vector<std::vector<cv::Point2f>> irImagePoints;
+  		std::vector<cv::Mat> rvecs, tvecs;
+
+
+  		if(rgb_image_folder_path.back() != '/')
+  			rgb_image_folder_path += std::string("/");
+
+  		if(depth_image_folder_path.back() != '/')
+  			depth_image_folder_path += std::string("/");
+
+		int count = 0;
+		for(int i = 0; i < image_number; ++i, ++count){
+
+			std::string rgb_name = rgb_image_folder_path + std::string("rgb_image_") + std::to_string(count) + std::string(".jpg");
+		    std::string ir_name = depth_image_folder_path + std::string("ir_image_") + std::to_string(count) + std::string(".jpg");
+		 
+		    cv::Mat rgb_gray = cv::imread(rgb_name, 0);
+		    cv::Mat ir_gray = cv::imread(ir_name, 0);
+
+		    calibsize_depth_ = ir_gray.size();
+		    calibsize_rgb_ = rgb_gray.size();
+		    std::vector<cv::Point2f > camera1ImagePoints;
+		    bool found1 = cv::findChessboardCorners(rgb_gray, board_size, camera1ImagePoints, cv::CALIB_CB_FAST_CHECK);
+
+		    std::vector<cv::Point2f> camera2ImagePoints;
+		    bool found2 = cv::findChessboardCorners(ir_gray, board_size, camera2ImagePoints, cv::CALIB_CB_ADAPTIVE_THRESH + cv::CALIB_CB_NORMALIZE_IMAGE);
+
+		    if(found1){
+		    	cv::cornerSubPix(rgb_gray, camera1ImagePoints, cv::Size(11, 11), cv::Size(-1, -1), term_criteria);
+		    	rgbImagePoints.push_back(camera1ImagePoints);
+		    }
+
+		    if(found2){
+			    cv::cornerSubPix(ir_gray, camera2ImagePoints, cv::Size(11, 11), cv::Size(-1, -1), term_criteria);
+			    irImagePoints.push_back(camera2ImagePoints);
+			}
+		}
+
+		std::vector<std::vector<cv::Point3f> > pointsBoard(1);
+		calcBoardCornerPositions(board_size, square_size, pointsBoard[0]);
+		pointsBoard.resize(image_number,pointsBoard[0]);
+		double error_1 = cv::calibrateCamera(pointsBoard, rgbImagePoints, calibsize_rgb_, calibrgb_camera_matrix_, rgb_distortion_,  rvecs,  tvecs);
+		saveCameraParams("rgb_calibration.yaml",calibsize_rgb_, board_size, square_size, 0, 0, calibrgb_camera_matrix_, rgb_distortion_, error_1);
+
+		double error_2 = cv::calibrateCamera(pointsBoard, irImagePoints, calibsize_depth_, calibdepth_camera_matrix_, depth_distortion_,  rvecs,  tvecs );
+		saveCameraParams("depth_calibration.yaml",calibsize_depth_, board_size, square_size, 0, 0, calibdepth_camera_matrix_, depth_distortion_, error_2 );
+
+		double rms = cv::stereoCalibrate(pointsBoard, rgbImagePoints, irImagePoints,
+		                calibrgb_camera_matrix_, rgb_distortion_,
+		                calibdepth_camera_matrix_, depth_distortion_,
+		                calibsize_rgb_, rotation_, translation_, essential_, fundamental_,
+		                cv::CALIB_FIX_INTRINSIC,
+		                term_criteria
+		                );
+
+		printCalibration();
+
+		std::cout << std::endl;
+		std::cout << "rgb error:" << error_1 <<std::endl;
+		std::cout << "depth error:" << error_2 <<std::endl;
+		std::cout << "stereo error " << rms << std::endl;
+
+		savePoseParams("pose_calibration.yaml", rotation_, translation_, essential_, fundamental_, rms);
+	}
+
+	void 
+	createFullCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
 	{
 		const float badPoint = std::numeric_limits<float>::quiet_NaN();
 
@@ -562,10 +636,10 @@ public:
 	}
 
 	void 
-	createCloud(const cv::Mat &depth, const cv::Mat &color, typename pcl::PointCloud<PointT>::Ptr &cloud) const
+	createCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) 
 	{
 		const float badPoint = std::numeric_limits<float>::quiet_NaN();
-		#pragma omp parallel for
+		#pragma omp parallel for 
 		for(int y = 0; y < depth.rows; ++y)
 		{	
 			PointT itP ;
@@ -605,36 +679,25 @@ public:
 					itP.b = tmp.val[0];
 					itP.g = tmp.val[1];
 					itP.r = tmp.val[2];
-					(*partial_clouds_)[omp_get_thread_num()].push_back(itP);
-					std::cout << omp_get_thread_num() <<std::endl;
+					partial_clouds_[omp_get_thread_num()].push_back(itP);
 				}
 			}
 		}
 		int total_points = 0;
-		for(auto cloud: *partial_clouds_)
+		for(auto& cloud: partial_clouds_)
 			total_points += cloud.size();
 
 		cloud->points.resize(total_points);
 		int current = 0;
-		for(auto pcloud: *partial_clouds_){
+		for(auto& pcloud: partial_clouds_){
 			int size = pcloud.size();
-			memcpy( &(cloud->points[current]), &(pcloud[0]),  size*sizeof(PointT)) ;
+			memcpy( &(cloud->points[current]), &(pcloud[0]), size * sizeof(PointT)) ;
 			current += size;
 		}	
 	}
 
 	void
-	enableSerialization(){
-		serialize_ = true;
-	}
-
-	void
-	disableSerialization(){
-		serialize_ = false;
-	}
-
-	void
-	serializeFrames(const cv::Mat &depth, const cv::Mat &color)
+	serializeFrames(const cv::Mat & depth, const cv::Mat & color)
 	{	
 		struct timeval tv;
     	gettimeofday(&tv,NULL);
@@ -649,7 +712,7 @@ public:
 	}
 
 	void 
-	remapDepth(const cv::Mat &depth, cv::Mat &scaled, const cv::Size size_registered, int type) const
+	remapDepth(const cv::Mat & depth, cv::Mat & scaled, const cv::Size & size_registered, const int type) const
 	{
 		scaled.create(size_registered, type);
 		if(type == CV_16U)
@@ -683,7 +746,7 @@ public:
 	}
 
 	inline float 
-	interpolatef32(const cv::Mat &in, const float &x, const float &y) const
+	interpolatef32(const cv::Mat & in, const float x, const float y) const
 	{
 		const int xL = (int)floor(x);
 		const int xH = (int)ceil(x);
@@ -743,7 +806,7 @@ public:
 
 
 	inline uint16_t 
-	interpolate16(const cv::Mat &in, const float &x, const float &y) const
+	interpolate16(const cv::Mat & in, const float x, const float y) const
 	{
 		const int xL = (int)floor(x);
 		const int xH = (int)ceil(x);
@@ -801,86 +864,26 @@ public:
 		return ((pLT * fLT +  pRT * fRT + pLB * fLB + pRB * fRB) / sum) + 0.5;
 	}
 
-
-	typename pcl::PointCloud<PointT>::Ptr
-	getFullCloud(int size_x = 512, int size_y = 424){
-
-		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
-		cloud_->is_dense = false;
-		cloud_->points.resize(size_x * size_y);
-
-		frames_ =  *getRawFrames();
-		rgb_ = frames_[libfreenect2::Frame::Color];
-		depth_ = frames_[libfreenect2::Frame::Depth];
-		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
-		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
-
-		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
-		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
-		rgb_final_ = tmp_rgb_;
-		cv::flip(depth_final_, depth_final_, 1);
-		cv::flip(rgb_final_, rgb_final_, 1);
-		depth_final_.convertTo(tmp_depth_, CV_16U);
-
-		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
-
-		if(serialize_)
-			serializeFrames(tmp_depth_, rgb_scaled_);
-		createFullCloud(tmp_depth_, rgb_scaled_, cloud_);
-		listener_->release(frames_);
-		return cloud_;
-	}
-
-	typename pcl::PointCloud<PointT>::Ptr
-	getCloud(int size_x = 512, int size_y = 424){
-
-		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
-		cloud_->is_dense = false;
-		
-		frames_ =  *getRawFrames();
-		rgb_ = frames_[libfreenect2::Frame::Color];
-		depth_ = frames_[libfreenect2::Frame::Depth];
-		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
-		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
-
-		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
-		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
-		rgb_final_ = tmp_rgb_;
-		cv::flip(depth_final_, depth_final_, 1);
-		cv::flip(rgb_final_, rgb_final_, 1);
-		depth_final_.convertTo(tmp_depth_, CV_16U);
-
-		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
-
-		if(serialize_)
-			serializeFrames(tmp_depth_, rgb_scaled_);
-		createCloud(tmp_depth_, rgb_scaled_, cloud_);
-		listener_->release(frames_);
-		return cloud_;
-	}
-
-
-
-private:
-
-	boost::archive::binary_oarchive * oa_ = 0;
-	std::ofstream * file_streamer_ = 0;
 	libfreenect2::Freenect2 freenect2_;
 	libfreenect2::Freenect2Device * dev_ = 0;
 	libfreenect2::SyncMultiFrameListener * listener_ = 0;
+	libfreenect2::Frame * depth_ = 0;
+	libfreenect2::Frame *rgb_ = 0;
 	libfreenect2::FrameMap frames_;
-	cv::Mat scaled_, registered_, map_x_depth_, map_y_depth_, rgb_scaled_, map_x_rgb_, map_y_rgb_;
+	cv::Mat scaled_, registered_, rgb_scaled_, map_x_depth_, map_y_depth_,  map_x_rgb_, map_y_rgb_;
 	cv::Mat rotation_, translation_, essential_, fundamental_;
-	libfreenect2::Frame *depth_, *rgb_;
 	cv::Size size_registered_, calibsize_depth_, calibsize_rgb_;
 	cv::Mat lookup_y_, lookup_x_, tmp_depth_, tmp_rgb_, depth_final_, rgb_final_;
-	std::vector<std::vector<PointT>> * partial_clouds_;
   	cv::Mat calibrgb_camera_matrix_, rgb_camera_matrix_,depth_distortion_, calibdepth_camera_matrix_, depth_camera_matrix_, rgb_distortion_;
   	double rgb_fx_, rgb_fy_, rgb_cx_, rgb_cy_;
   	double ir_fx_, ir_fy_, ir_cx_, ir_cy_;
   	bool serialize_;
-  	cv::Size size_;
   	float distance_;
+  	std::ofstream * file_streamer_ = 0;
+  	std::vector<std::vector<PointT>> partial_clouds_;
+  	boost::archive::binary_oarchive * oa_ = 0;
+
+
 };
 
 }
