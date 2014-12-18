@@ -43,47 +43,47 @@ bool shut_down = false;
 
 BOOST_SERIALIZATION_SPLIT_FREE(::cv::Mat)
 namespace boost {
-  namespace serialization {
+namespace serialization {
  
     /** Serialization support for cv::Mat */
     template <class Archive>
     void save(Archive & ar, const ::cv::Mat& m, const unsigned int version)
     {
-      size_t elem_size = m.elemSize();
-      size_t elem_type = m.type();
- 
-      ar & m.cols;
-      ar & m.rows;
-      ar & elem_size;
-      ar & elem_type;
- 
-      const size_t data_size = m.cols * m.rows * elem_size;
-      ar & boost::serialization::make_array(m.ptr(), data_size);
+		size_t elem_size = m.elemSize();
+		size_t elem_type = m.type();
+
+		ar & m.cols;
+		ar & m.rows;
+		ar & elem_size;
+		ar & elem_type;
+
+		const size_t data_size = m.cols * m.rows * elem_size;
+		ar & boost::serialization::make_array(m.ptr(), data_size);
     }
  
     /** Serialization support for cv::Mat */
     template <class Archive>
     void load(Archive & ar, ::cv::Mat& m, const unsigned int version)
     {
-      int cols, rows;
-      size_t elem_size, elem_type;
- 
-      ar & cols;
-      ar & rows;
-      ar & elem_size;
-      ar & elem_type;
- 
-      m.create(rows, cols, elem_type);
- 
-      size_t data_size = m.cols * m.rows * elem_size;
-      ar & boost::serialization::make_array(m.ptr(), data_size);
+		int cols, rows;
+		size_t elem_size, elem_type;
+
+		ar & cols;
+		ar & rows;
+		ar & elem_size;
+		ar & elem_type;
+
+		m.create(rows, cols, elem_type);
+
+		size_t data_size = m.cols * m.rows * elem_size;
+		ar & boost::serialization::make_array(m.ptr(), data_size);
     }
  
-  }
+}
 }
 void sigintHandler(int s)
 {
-  shut_down = true;
+	shut_down = true;
 }
 
 namespace Kinect2Grabber {
@@ -161,12 +161,6 @@ public:
 
 		size_.width = size_x;
 		size_.height = size_y;
-		
-/**		ir_fx_ = depth_camera_matrix_.at<double>(0,0) * sx_depth;
-		ir_fy_ = depth_camera_matrix_.at<double>(1,1) * sy_depth;
-		ir_cx_ = depth_camera_matrix_.at<double>(0,2) * sx_depth;
-		ir_cy_ = depth_camera_matrix_.at<double>(1,2) * sy_depth;
-		*/
 
 		depth_camera_matrix_ = calibdepth_camera_matrix_;
 		depth_camera_matrix_.at<double>(0,0) *= sx_depth;
@@ -314,37 +308,37 @@ public:
                       const cv::Mat& camera_matrix, const cv::Mat& distortion,
                       const double total_error ) const {
 
-		 cv::FileStorage fs( filename, cv::FileStorage::WRITE );
+		cv::FileStorage fs( filename, cv::FileStorage::WRITE );
 
-		 time_t t;
-		 time( &t );
-		 struct tm *t2 = localtime( &t );
-		 char buf[1024];
-		 strftime( buf, sizeof(buf)-1, "%c", t2 );
+		time_t t;
+		time( &t );
+		struct tm *t2 = localtime( &t );
+		char buf[1024];
+		strftime( buf, sizeof(buf)-1, "%c", t2 );
 
-		 fs << "calibration_time" << buf;
-		 fs << "image_width" << image_size.width;
-		 fs << "image_height" << image_size.height;
-		 fs << "board_width" << board_size.width;
-		 fs << "board_height" << board_size.height;
-		 fs << "square_size_" << square_size_;
+		fs << "calibration_time" << buf;
+		fs << "image_width" << image_size.width;
+		fs << "image_height" << image_size.height;
+		fs << "board_width" << board_size.width;
+		fs << "board_height" << board_size.height;
+		fs << "square_size_" << square_size_;
 
-		 if( flags & cv::CALIB_FIX_ASPECT_RATIO )
-			fs << "aspectRatio" << aspect_ratio;
+		if( flags & cv::CALIB_FIX_ASPECT_RATIO )
+		fs << "aspectRatio" << aspect_ratio;
 
-		 if( flags != 0 )
-		 {
-			sprintf( buf, "flags: %s%s%s%s",
-			flags & cv::CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
-			flags & cv::CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
-			flags & cv::CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
-			flags & cv::CALIB_ZERO_TANGENT_DIST ? "+zero_tangent_dist" : "" );
-		 }
+		if( flags != 0 )
+		{
+		sprintf( buf, "flags: %s%s%s%s",
+		flags & cv::CALIB_USE_INTRINSIC_GUESS ? "+use_intrinsic_guess" : "",
+		flags & cv::CALIB_FIX_ASPECT_RATIO ? "+fix_aspectRatio" : "",
+		flags & cv::CALIB_FIX_PRINCIPAL_POINT ? "+fix_principal_point" : "",
+		flags & cv::CALIB_ZERO_TANGENT_DIST ? "+zero_tangent_dist" : "" );
+		}
 
-		 fs << "flags" << flags;
-		 fs << "camera_matrix" << camera_matrix;
-		 fs << "distortion_coefficients" << distortion;
-		 fs << "avg_reprojection_error" << total_error;
+		fs << "flags" << flags;
+		fs << "camera_matrix" << camera_matrix;
+		fs << "distortion_coefficients" << distortion;
+		fs << "avg_reprojection_error" << total_error;
  	}
 
  	void 
@@ -425,7 +419,7 @@ public:
 		double rms = cv::stereoCalibrate(pointsBoard, rgbImagePoints, irImagePoints,
 		                calibrgb_camera_matrix_, rgb_distortion_,
 		                calibdepth_camera_matrix_, depth_distortion_,
-		                cv::Size(1920,1080), rotation_, translation_, essential_, fundamental_,
+		                calibsize_rgb_, rotation_, translation_, essential_, fundamental_,
 		                cv::CALIB_FIX_INTRINSIC,
 		                term_criteria
 		                );
@@ -536,14 +530,6 @@ public:
 					itP->rgba = 0;
 					continue;
 				}
-				/*
-				itP->z = depth_value ;
-				itP->x = (x - ir_cx_) / (ir_fx_) * depth_value;
-				itP->y = (y - ir_cy_) / (ir_fy_ ) * depth_value;
-				itP->b = 255;//itC->val[0];
-				itP->g = 255;//itC->val[1];
-				itP->r = 255;//itC->val[2];
-				*/
 
 				//to depth world
 				float final_x = (x - ir_cx_ ) / (ir_fx_ ) * depth_value;
@@ -571,12 +557,9 @@ public:
 					itP->g = tmp.val[1];
 					itP->r = tmp.val[2];
 				}
-
 			}
-
 		}
 	}
-
 	void
 	enableSerialization(){
 		serialize_ = true;
@@ -756,35 +739,35 @@ public:
 	}
 
 
-  typename pcl::PointCloud<PointT>::Ptr
-  getCloud(int size_x = 512, int size_y = 424){
+	typename pcl::PointCloud<PointT>::Ptr
+	getCloud(int size_x = 512, int size_y = 424){
 
-	if(cloud_->points.size() != size_x * size_y) {
-		initsizesandud(size_x,size_y);
+		if(cloud_->points.size() != size_x * size_y) {
+			initsizesandud(size_x,size_y);
+		}
+
+
+		frames_ =  *getRawFrames();
+		rgb_ = frames_[libfreenect2::Frame::Color];
+		depth_ = frames_[libfreenect2::Frame::Depth];
+		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
+		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
+
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
+		rgb_final_ = tmp_rgb_;
+		cv::flip(depth_final_, depth_final_, 1);
+		cv::flip(rgb_final_, rgb_final_, 1);
+		depth_final_.convertTo(tmp_depth_, CV_16U);
+
+		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
+
+		if(serialize_)
+			serializeFrames(tmp_depth_, rgb_scaled_);
+		createCloud(tmp_depth_, rgb_scaled_, cloud_);
+		listener_->release(frames_);
+		return cloud_;
 	}
-
-
-	frames_ =  *getRawFrames();
-	rgb_ = frames_[libfreenect2::Frame::Color];
-	depth_ = frames_[libfreenect2::Frame::Depth];
-	tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
-	remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
-
-	tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
-	//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
-	rgb_final_ = tmp_rgb_;
-	cv::flip(depth_final_, depth_final_, 1);
-	cv::flip(rgb_final_, rgb_final_, 1);
-	depth_final_.convertTo(tmp_depth_, CV_16U);
-
-	cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
-	
-	if(serialize_)
-		serializeFrames(tmp_depth_, rgb_scaled_);
-	createCloud(tmp_depth_, rgb_scaled_, cloud_);
-	listener_->release(frames_);
-	return cloud_;
-  }
 
 private:
 

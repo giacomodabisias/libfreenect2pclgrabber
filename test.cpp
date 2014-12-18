@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
   //The second constructor load an existing calibration
   
   //Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
-  Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./rgb_calibration.yaml", "./depth_calibration.yaml", "./pose_calibration.yaml");
+  Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("../calibration/rgb_calibration.yaml", "../calibration/depth_calibration.yaml", "../calibration/pose_calibration.yaml");
 
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 
