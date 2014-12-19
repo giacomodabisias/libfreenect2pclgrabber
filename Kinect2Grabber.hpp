@@ -41,6 +41,7 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool shut_down = false; 
+bool deb = true;
 
 BOOST_SERIALIZATION_SPLIT_FREE(::cv::Mat)
 namespace boost {
@@ -313,6 +314,37 @@ public:
 		return cloud_;
 	}
 
+
+	//returns a cloud with NaN points and fixed size (512*424)
+	typename pcl::PointCloud<PointT>::Ptr
+	getFullCloudFromRGB(const int size_x = 512, const int size_y = 424){
+
+		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
+		cloud_->is_dense = false;
+		cloud_->points.resize(size_x * size_y);
+
+		frames_ =  *getRawFrames();
+		rgb_ = frames_[libfreenect2::Frame::Color];
+		depth_ = frames_[libfreenect2::Frame::Depth];
+		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
+		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
+
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
+		rgb_final_ = tmp_rgb_;
+		cv::flip(depth_final_, depth_final_, 1);
+		cv::flip(rgb_final_, rgb_final_, 1);
+		depth_final_.convertTo(tmp_depth_, CV_16U);
+
+		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
+
+		if(serialize_)
+			serializeFrames(tmp_depth_, rgb_scaled_);
+		createFullCloudFromRgb(tmp_depth_, rgb_scaled_, cloud_);
+		listener_->release(frames_);
+		return cloud_;
+	}
+
 	//returns a cloud without NaN points or points with distance greather than distance_
 	typename pcl::PointCloud<PointT>::Ptr
 	getCloud(const int size_x = 512, const int size_y = 424){
@@ -581,7 +613,7 @@ private:
 
 		savePoseParams("pose_calibration.yaml", rotation_, translation_, essential_, fundamental_, rms);
 	}
-
+/*
 	void 
 	createFullCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
 	{
@@ -631,59 +663,198 @@ private:
 				}
 			}
 		}
-	}
+	}*/
 
 	void 
-	createFullCloudFromRgb(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
+	createFullCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) 
 	{
-		#pragma omp parallel for
-		for(int y = 0; y < color.rows; ++y)
+
+		Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > erotation((double*)(rotation_.data));
+		Eigen::Matrix3d rotation = erotation;
+		Eigen::Map<Eigen::Vector3d> etranslation ((double*)(translation_.data));
+		Eigen::Vector3d translation = etranslation;
+		Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > edepth_matrix((double*)(depth_camera_matrix_.data));
+		Eigen::Matrix3d depth_matrix = edepth_matrix;
+		Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > ergb_matrix((double*)(rgb_camera_matrix_.data));
+		Eigen::Matrix3d rgb_matrix = ergb_matrix;
+
+		Eigen::Matrix4d rototranslation = Eigen::Matrix4d::Zero();
+		Eigen::Matrix4d odepth_matrix = Eigen::Matrix4d::Zero();
+		Eigen::Matrix4d orgb_matrix = Eigen::Matrix4d::Zero(); 
+
+		rototranslation.block<3,3>(0,0) = rotation;
+		rototranslation.block<3,1>(0,3) = translation;
+		rototranslation(3,3) = 1;
+
+		odepth_matrix.block<3,3>(0,0) = depth_matrix;
+		odepth_matrix(3,3) = 1;
+
+		orgb_matrix.block<3,3>(0,0) = rgb_matrix;
+		orgb_matrix(3,3) = 1;
+
+
+		#if 0
+			std::cout << "rotation" << std::endl;
+			std::cout << rotation << std::endl;
+			std::cout << "translation" << std::endl;
+			std::cout << translation << std::endl;
+			std::cout << "rototranslation" << std::endl;
+			std::cout << rototranslation << std::endl;
+			std::cout << "depth" << std::endl;
+			std::cout << odepth_matrix <<std::endl;
+			std::cout << "rgb" << std::endl;
+			std::cout << orgb_matrix << std::endl;
+		#endif
+		Eigen::Matrix4d world2rgb = orgb_matrix * rototranslation;
+		Eigen::Matrix4d depth2world = odepth_matrix.inverse();
+
+		//#pragma omp parallel for
+		for(int y = 0; y < depth.rows; ++y)
 		{	
-			PointT *itP = &cloud->points[y * color.cols];
+			PointT *itP = &cloud->points[y * depth.cols];
+			const uint16_t *itD = depth.ptr<uint16_t>(y);
 
-			for(size_t x = 0; x < (size_t)color.cols; ++x, ++itP)
+			for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD )
 			{
-				const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
-
-				
-		
-				//to depth world
-				float final_x = (x - rgb_cx_ ) / (rgb_fx_ ) * depth_value;
-				float final_y = (y - rgb_cy_ ) / (rgb_fy_ ) * depth_value;
-				Eigen::Vector3d rgb_world(final_x, final_y , depth_value);
-
-				//depth world to rgb world
-				Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
-				Eigen::Matrix3d rotation = mappedMat;
-				Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
-				Eigen::Vector3d translation = mappedMat2;
-				rotation = rotation.inverse();
-
-				Eigen::Vector3d depth_world = rotation * rgb_world + translation;
-
-				//rgb world to rgb image
-				int depth_image_x =  ((depth_world.x() * (ir_fx_ ) / depth_value)) + ir_cx_ ;
-				int depth_image_y = ((depth_world.y() * (ir_fy_ ) / depth_value)) + ir_cy_ ;
-
-									const uint16_t itD = depth.at<uint16_t>(depth_image_y, depth_image_x);
-
-
-				if(isnan(depth_value) && depth_value >= itP->z)
+				const float depth_value = *itD / 1000.0f;
+				// Check for invalid measurements
+				if(isnan(depth_value) || *itD >= distance_)
 				{
+					// not valid
+					itP->x = itP->y = itP->z = std::numeric_limits<float>::quiet_NaN();
+					itP->rgba = 0;
 					continue;
 				}
 
-				if(depth_image_x > 0 && depth_image_x < depth.cols && depth_image_y > 0 && depth_image_y < depth.rows ){
-					itP->z = itD;
-					itP->x = final_x;
-					itP->y = final_y;
+				Eigen::Vector4d psd(x, y, 1.0, 1.0/depth_value);
+				Eigen::Vector4d psddiv = psd * depth_value;
+
+				Eigen::Vector4d  pworld = depth2world * psddiv;
+
+				//to depth world
+				//float final_x = (x - ir_cx_ ) / (ir_fx_ ) * depth_value;
+				//float final_y = (y - ir_cy_ ) / (ir_fy_ ) * depth_value;
+				//Eigen::Vector3d ir_world(psd.x(), psd.y(), depth_value);
+
+				Eigen::Vector4d rgb_img_homo = world2rgb *  pworld;
+				
+				Eigen::Vector4d rgb_img = rgb_img_homo / rgb_img_homo.z();
+
+				//Eigen::Vector3d rgb_world = rotation * ir_world + translation;
+
+				//rgb world to rgb image
+			//	int rgb_image_x =  ((rgb_world.x() * (rgb_fx_ ) / depth_value)) + rgb_cx_ ;
+			//	int rgb_image_y = ((rgb_world.y() * (rgb_fy_ ) / depth_value)) + rgb_cy_ ;
+
+
+				if(rgb_img.x() > 0 && rgb_img.x() < color.cols && rgb_img.y() > 0 && rgb_img.y() < color.rows){
+					
+					itP->z = depth_value;
+					itP->x = pworld.x() ;
+					itP->y = pworld.y() ;
+
+					const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_img.y(), rgb_img.x());
 					itP->b = tmp.val[0];
 					itP->g = tmp.val[1];
 					itP->r = tmp.val[2];
 				}
 			}
 		}
+						deb = false;
+
 	}
+
+
+	void 
+	createFullCloudFromRgb(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
+	{
+
+		Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > erotation((double*)(rotation_.data));
+		Eigen::Matrix3d rotation = erotation;
+		Eigen::Map<Eigen::Vector3d> etranslation ((double*)(translation_.data));
+		Eigen::Vector3d translation = etranslation;
+		Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > edepth_matrix((double*)(depth_camera_matrix_.data));
+		Eigen::Matrix3d depth_matrix = edepth_matrix;
+		Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > ergb_matrix((double*)(rgb_camera_matrix_.data));
+		Eigen::Matrix3d rgb_matrix = ergb_matrix;
+
+		Eigen::Matrix4d rototranslation = Eigen::Matrix4d::Zero();
+		Eigen::Matrix4d odepth_matrix = Eigen::Matrix4d::Zero();
+		Eigen::Matrix4d orgb_matrix = Eigen::Matrix4d::Zero(); 
+
+		rototranslation.block<3,3>(0,0) = rotation;
+		rototranslation.block<3,1>(0,3) = translation;
+		rototranslation(3,3) = 1;
+
+		odepth_matrix.block<3,3>(0,0) = depth_matrix;
+		odepth_matrix(3,3) = 1;
+
+		orgb_matrix.block<3,3>(0,0) = rgb_matrix;
+		orgb_matrix(3,3) = 1;
+
+
+		Eigen::Matrix4d depth2world = odepth_matrix.inverse();
+		Eigen::Matrix3d rgb2depth = (((orgb_matrix * rototranslation * depth2world)).block<3,3>(0,0)).inverse();
+
+		for(int i =0; i <cloud->points.size(); i++)
+		{
+			cloud->points[i].x = std::numeric_limits<float>::quiet_NaN();
+			cloud->points[i].y = std::numeric_limits<float>::quiet_NaN();
+			cloud->points[i].z = std::numeric_limits<float>::quiet_NaN();
+			cloud->points[i].rgba = 0;					
+		}
+
+		int invalid = 0;
+		int outside = 0;
+		int replaced = 0;
+		int newone = 0;
+
+
+//		#pragma omp parallel for
+		for(int y = 0; y < color.rows; ++y)
+		{	
+			for(size_t x = 0; x < (size_t)color.cols; ++x)
+			{
+				const cv::Vec3b ptcolor = color.at<cv::Vec3b>(y, x);
+
+				Eigen::Vector3d rgb_i(x,y,1); // 2D homo
+				Eigen::Vector3d depth_sub_i = rgb2depth * rgb_i; // to 2D homo
+				PointT *itP = &cloud->points[depth_sub_i.x() + depth_sub_i.y() * color.cols];
+
+				double newdepth = std::numeric_limits<float>::quiet_NaN();
+				
+				if(depth_sub_i.x() >= 0 && depth_sub_i.x() < depth.cols && depth_sub_i.y() >= 0 && depth_sub_i.y() < depth.rows )
+				{
+					newdepth = (depth.at<uint16_t>((int)depth_sub_i.y(),(int)depth_sub_i.x()))/1000.0;
+					if(isnan(newdepth))
+					{
+						invalid++;
+					}
+				}
+				
+				if(!isnan(newdepth) && ((isnan(itP->z) || newdepth < itP->z)) )
+				{
+					if(isnan(itP->z))
+						newone++;
+					else
+						replaced++;
+
+					Eigen::Vector4d psd(depth_sub_i.x(),depth_sub_i.y(), 1.0, 1.0/newdepth);
+					Eigen::Vector4d psddiv = psd * newdepth; // (x*newdepth,y*newdepth,newdepth,1)
+					Eigen::Vector4d pworld = depth2world * psddiv;
+
+					itP->x = pworld.x() ;
+					itP->y = pworld.y() ;
+					itP->z = newdepth; // mm to m
+					itP->b = ptcolor.val[0];
+					itP->g = ptcolor.val[1];
+					itP->r = ptcolor.val[2];
+				}
+			}
+		}
+		std::cout << "total: " << color.rows*color.cols <<  " nan: "<<invalid << " outside:"<< outside << " AND replaced: " << replaced << " newone:" << newone << std::endl;
+	}
+
 
 	void 
 	createCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) 
@@ -931,7 +1102,6 @@ private:
   	std::ofstream * file_streamer_ = 0;
   	std::vector<std::vector<PointT>> partial_clouds_;
   	boost::archive::binary_oarchive * oa_ = 0;
-
 
 };
 
