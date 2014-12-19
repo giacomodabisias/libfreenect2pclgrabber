@@ -585,8 +585,6 @@ private:
 	void 
 	createFullCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
 	{
-		const float badPoint = std::numeric_limits<float>::quiet_NaN();
-
 		#pragma omp parallel for
 		for(int y = 0; y < depth.rows; ++y)
 		{	
@@ -600,7 +598,7 @@ private:
 				if(isnan(depth_value) || *itD >= distance_)
 				{
 					// not valid
-					itP->x = itP->y = itP->z = badPoint;
+					itP->x = itP->y = itP->z = std::numeric_limits<float>::quiet_NaN();
 					itP->rgba = 0;
 					continue;
 				}
@@ -611,7 +609,7 @@ private:
 				Eigen::Vector3d ir_world(final_x, final_y , depth_value);
 
 				//depth world to rgb world
-				Eigen::Map<Eigen::Matrix<double,3,3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
+				Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
 				Eigen::Matrix3d rotation = mappedMat;
 				Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
 				Eigen::Vector3d translation = mappedMat2;
@@ -636,9 +634,60 @@ private:
 	}
 
 	void 
+	createFullCloudFromRgb(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
+	{
+		#pragma omp parallel for
+		for(int y = 0; y < color.rows; ++y)
+		{	
+			PointT *itP = &cloud->points[y * color.cols];
+
+			for(size_t x = 0; x < (size_t)color.cols; ++x, ++itP)
+			{
+				const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
+
+				
+		
+				//to depth world
+				float final_x = (x - rgb_cx_ ) / (rgb_fx_ ) * depth_value;
+				float final_y = (y - rgb_cy_ ) / (rgb_fy_ ) * depth_value;
+				Eigen::Vector3d rgb_world(final_x, final_y , depth_value);
+
+				//depth world to rgb world
+				Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
+				Eigen::Matrix3d rotation = mappedMat;
+				Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
+				Eigen::Vector3d translation = mappedMat2;
+				rotation = rotation.inverse();
+
+				Eigen::Vector3d depth_world = rotation * rgb_world + translation;
+
+				//rgb world to rgb image
+				int depth_image_x =  ((depth_world.x() * (ir_fx_ ) / depth_value)) + ir_cx_ ;
+				int depth_image_y = ((depth_world.y() * (ir_fy_ ) / depth_value)) + ir_cy_ ;
+
+									const uint16_t itD = depth.at<uint16_t>(depth_image_y, depth_image_x);
+
+
+				if(isnan(depth_value) && depth_value >= itP->z)
+				{
+					continue;
+				}
+
+				if(depth_image_x > 0 && depth_image_x < depth.cols && depth_image_y > 0 && depth_image_y < depth.rows ){
+					itP->z = itD;
+					itP->x = final_x;
+					itP->y = final_y;
+					itP->b = tmp.val[0];
+					itP->g = tmp.val[1];
+					itP->r = tmp.val[2];
+				}
+			}
+		}
+	}
+
+	void 
 	createCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) 
 	{
-		const float badPoint = std::numeric_limits<float>::quiet_NaN();
 		#pragma omp parallel for 
 		for(int y = 0; y < depth.rows; ++y)
 		{	
@@ -874,7 +923,7 @@ private:
 	cv::Mat rotation_, translation_, essential_, fundamental_;
 	cv::Size size_registered_, calibsize_depth_, calibsize_rgb_;
 	cv::Mat lookup_y_, lookup_x_, tmp_depth_, tmp_rgb_, depth_final_, rgb_final_;
-  	cv::Mat calibrgb_camera_matrix_, rgb_camera_matrix_,depth_distortion_, calibdepth_camera_matrix_, depth_camera_matrix_, rgb_distortion_;
+  	cv::Mat calibrgb_camera_matrix_, calibdepth_camera_matrix_, rgb_camera_matrix_, depth_camera_matrix_, depth_distortion_, rgb_distortion_;
   	double rgb_fx_, rgb_fy_, rgb_cx_, rgb_cy_;
   	double ir_fx_, ir_fy_, ir_cx_, ir_cy_;
   	bool serialize_;
