@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 
   cloud = k2g.getCloud();
-    k2g.setDistance(900);
+  //k2g.setDistance(900);
 
   cloud->sensor_orientation_.w () = 0.0;
   cloud->sensor_orientation_.x () = 1.0;

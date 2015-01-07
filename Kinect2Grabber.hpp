@@ -420,7 +420,7 @@ private:
 		partial_clouds_.resize(threads);
 		for(int i = 0; i < threads; ++i)
 			partial_clouds_[i].reserve((size_x * size_y) / threads + 1 );
-		distance_ = 0.001;
+		distance_ = 10000;
 	}
  
 	void
@@ -819,7 +819,7 @@ private:
 
 				Eigen::Vector3d rgb_i(x,y,1); // 2D homo
 				Eigen::Vector3d depth_sub_i = rgb2depth * rgb_i; // to 2D homo
-				PointT *itP = &cloud->points[depth_sub_i.x() + depth_sub_i.y() * color.cols];
+				PointT *itP = &cloud->points[(int)depth_sub_i.x() + (int)(depth_sub_i.y()) * color.cols];
 
 				double newdepth = std::numeric_limits<float>::quiet_NaN();
 				
@@ -832,7 +832,7 @@ private:
 					}
 				}
 				
-				if(!isnan(newdepth) && ((isnan(itP->z) || newdepth < itP->z)) )
+				if(!isnan(newdepth) && (isnan(itP->z) || newdepth < itP->z) )
 				{
 					if(isnan(itP->z))
 						newone++;
