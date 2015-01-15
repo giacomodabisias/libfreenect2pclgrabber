@@ -13,6 +13,7 @@
 //limitations under the License.
 //This is preliminary software and/or hardware and APIs are preliminary and subject to change.
 #include "Kinect2Grabber.hpp"
+#include <chrono>
 
 int main(int argc, char *argv[])
 {
@@ -24,14 +25,14 @@ int main(int argc, char *argv[])
   Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("../calibration/rgb_calibration.yaml", "../calibration/depth_calibration.yaml", "../calibration/pose_calibration.yaml");
 
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
+  k2g.setDistance(3000);
 
-  cloud = k2g.getCloud();
-  //k2g.setDistance(900);
+  cloud = k2g.getFullCloud();
 
-  cloud->sensor_orientation_.w () = 0.0;
-  cloud->sensor_orientation_.x () = 1.0;
-  cloud->sensor_orientation_.y () = 0.0;
-  cloud->sensor_orientation_.z () = 0.0;
+  cloud->sensor_orientation_.w() = 0.0;
+  cloud->sensor_orientation_.x() = 1.0;
+  cloud->sensor_orientation_.y() = 0.0;
+  cloud->sensor_orientation_.z() = 0.0;
 
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   viewer->setBackgroundColor (0, 0, 0);
@@ -41,9 +42,17 @@ int main(int argc, char *argv[])
   
   while (!viewer->wasStopped ()) {
     viewer->spinOnce ();
-    cloud = k2g.getCloud();
+    using namespace std::chrono;
+    static high_resolution_clock::time_point last;
+
+    auto tnow = high_resolution_clock::now();
+    cloud = k2g.getFullCloud();
+    auto tpost = high_resolution_clock::now();
+    std::cout << "delta " << duration_cast<duration<double>>(tpost-last).count()*1000 << " " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
+    last = tpost;
+    
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-    viewer->updatePointCloud<pcl::PointXYZRGB> (cloud,rgb, "sample cloud"); 
+    viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud"); 
   }
 
   k2g.shutDown();
