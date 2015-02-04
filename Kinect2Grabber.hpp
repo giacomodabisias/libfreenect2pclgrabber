@@ -45,6 +45,8 @@
 bool shut_down = false; 
 bool deb = true;
 
+
+
 BOOST_SERIALIZATION_SPLIT_FREE(::cv::Mat)
 namespace boost {
 namespace serialization {
@@ -92,6 +94,30 @@ void sigintHandler(int s)
 }
 
 namespace Kinect2Grabber {
+
+
+/*
+template <typename PointT>
+class CvFrame{
+public:
+
+	cv::Mat data_
+
+	Frame(Kinect2Grabber<PointT> * k){
+		grabber_ = k;
+		freenect_data_ = grabber_->getRgbFrame();
+		data_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_8UC3, freenect_data_->data);
+	}
+
+	~Frame(){
+		grabber_->freeFrames();
+	}
+
+private:
+	Kinect2Grabber<PointT> * grabber_; 
+	libfreenect2::Frame * freenect_data_;
+};
+*/
 
 template< typename PointT>
 class Kinect2Grabber
@@ -145,11 +171,11 @@ public:
 		std::cout << "device firmware: " << dev_->getFirmwareVersion() << std::endl;
 
 		loadCalibration(rgb_calibration_file, depth_calibration_file, pose_calibration_file );
+
 		
 		printCalibration();
 		init();
 	}
-
 
 	~Kinect2Grabber(){
 		this->shutDown();
@@ -168,7 +194,7 @@ public:
 		std::cout << "Camera Matrix:" <<std::endl ;
 		std::cout << calibrgb_camera_matrix_ << std::endl;
 		std::cout << std::endl;
-		std::cout << "Ditortion:" <<std::endl ;
+		std::cout << "Distortion:" <<std::endl ;
 		std::cout << rgb_distortion_ << std::endl;
 		std::cout << std::endl;
 
@@ -178,7 +204,7 @@ public:
 		std::cout << std::endl;
 		std::cout << calibdepth_camera_matrix_ << std::endl;
 		std::cout << std::endl;
-		std::cout << "Ditortion:" <<std::endl ;
+		std::cout << "Distortion:" <<std::endl ;
 		std::cout << std::endl;
 		std::cout<< depth_distortion_ << std::endl;
 		std::cout << std::endl;
@@ -411,7 +437,7 @@ public:
 
 private:
 
-	void initsizesandud(const int size_x=512 , const int size_y=424)
+	void initSizeAndData(const int size_x=512 , const int size_y=424)
 	{
 	
 		const float sx_depth =  ((float)size_x / (float)calibsize_depth_.width);
@@ -425,6 +451,7 @@ private:
 		depth_camera_matrix_.at<double>(0,2) *= sx_depth;
 		depth_camera_matrix_.at<double>(1,2) *= sy_depth;
 
+		//need to rescale since rgb image is resized
 		rgb_camera_matrix_ = calibrgb_camera_matrix_;
 		rgb_camera_matrix_.at<double>(0,0) *= sx_rgb;
 		rgb_camera_matrix_.at<double>(1,1) *= sy_rgb;
@@ -449,13 +476,15 @@ private:
 
 	void
 	init(const int size_x=512 , const int size_y=424){
-		initsizesandud(size_x,size_y);
+		initSizeAndData(size_x,size_y);
 		unsigned threads = omp_get_max_threads();
 		partial_clouds_.resize(threads);
 		for(int i = 0; i < threads; ++i)
 			partial_clouds_[i].reserve((size_x * size_y) / threads + 1 );
 		distance_ = 10000;
 	}
+
+
  
 	void
 	loadCalibration(const std::string rgb_calibration_file, const std::string depth_calibration_file, const std::string pose_calibration_file ){
@@ -621,7 +650,7 @@ private:
 			}
 		}
 
-		std::vector<std::vector<cv::Point3f> > pointsBoard(1);
+		std::vector<std::vector<cv::Point3f>> pointsBoard(1);
 		calcBoardCornerPositions(board_size, square_size, pointsBoard[0]);
 		pointsBoard.resize(image_number,pointsBoard[0]);
 		double error_1 = cv::calibrateCamera(pointsBoard, rgbImagePoints, calibsize_rgb_, calibrgb_camera_matrix_, rgb_distortion_,  rvecs,  tvecs);
@@ -634,8 +663,8 @@ private:
 		                calibrgb_camera_matrix_, rgb_distortion_,
 		                calibdepth_camera_matrix_, depth_distortion_,
 		                calibsize_rgb_, rotation_, translation_, essential_, fundamental_,
-		                cv::CALIB_FIX_INTRINSIC,
-		                term_criteria
+		                term_criteria,
+		                cv::CALIB_FIX_INTRINSIC
 		                );
 
 		printCalibration();
@@ -647,6 +676,9 @@ private:
 
 		savePoseParams("pose_calibration.yaml", rotation_, translation_, essential_, fundamental_, rms);
 	}
+
+	
+
 /*
 	void 
 	createFullCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
@@ -1181,6 +1213,25 @@ private:
   	Eigen::Matrix4d world2rgb_;
   	Eigen::Matrix4d depth2world_ ;
 
+};
+
+template <typename PointT>
+class Frame{
+public:
+
+	libfreenect2::Frame * data_;
+
+	Frame(Kinect2Grabber<PointT> * k){
+		grabber_ = k;
+		data_ = grabber_->getRgbFrame();
+	}
+
+	~Frame(){
+		grabber_->freeFrames();
+	}
+
+private:
+	Kinect2Grabber<PointT> * grabber_; 
 };
 
 }
