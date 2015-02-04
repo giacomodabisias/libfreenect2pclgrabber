@@ -95,33 +95,11 @@ void sigintHandler(int s)
 
 namespace Kinect2Grabber {
 
-
-/*
-template <typename PointT>
-class CvFrame{
-public:
-
-	cv::Mat data_
-
-	Frame(Kinect2Grabber<PointT> * k){
-		grabber_ = k;
-		freenect_data_ = grabber_->getRgbFrame();
-		data_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_8UC3, freenect_data_->data);
-	}
-
-	~Frame(){
-		grabber_->freeFrames();
-	}
-
-private:
-	Kinect2Grabber<PointT> * grabber_; 
-	libfreenect2::Frame * freenect_data_;
-};
-*/
-
 template< typename PointT>
 class Kinect2Grabber
 {
+friend class Frame<PointT>;
+friend class CvFrame<PointT>;
 public:
 
 	Kinect2Grabber( std::string rgb_image_folder_path,  std::string depth_image_folder_path, const int image_number, const cv::Size & board_size, const double square_size): 
@@ -231,23 +209,6 @@ public:
 		distance_ = dist;
 	}
 
-	libfreenect2::Frame *
-	getRgbFrame() {
-		listener_->waitForNewFrame(frames_);
-		return frames_[libfreenect2::Frame::Color];
-	}
-
-	libfreenect2::Frame *
-	getIrFrame() {
-		listener_->waitForNewFrame(frames_);
-		return frames_[libfreenect2::Frame::Ir];
-	} 
-
-	libfreenect2::Frame *
-	getDepthFrame() {
-		listener_->waitForNewFrame(frames_);
-		return frames_[libfreenect2::Frame::Depth];
-	}
 
 	libfreenect2::FrameMap *
 	getRawFrames() {
@@ -436,6 +397,24 @@ public:
 	}*/
 
 private:
+
+	libfreenect2::Frame *
+	getRgbFrame() {
+		listener_->waitForNewFrame(frames_);
+		return frames_[libfreenect2::Frame::Color];
+	}
+
+	libfreenect2::Frame *
+	getIrFrame() {
+		listener_->waitForNewFrame(frames_);
+		return frames_[libfreenect2::Frame::Ir];
+	} 
+
+	libfreenect2::Frame *
+	getDepthFrame() {
+		listener_->waitForNewFrame(frames_);
+		return frames_[libfreenect2::Frame::Depth];
+	}
 
 	void initSizeAndData(const int size_x=512 , const int size_y=424)
 	{
@@ -1221,18 +1200,38 @@ public:
 
 	libfreenect2::Frame * data_;
 
-	Frame(Kinect2Grabber<PointT> * k){
-		grabber_ = k;
-		data_ = grabber_->getRgbFrame();
+	Frame(Kinect2Grabber<PointT> & k): grabber_(k){
+		data_ = grabber_.getRgbFrame();
 	}
 
 	~Frame(){
-		grabber_->freeFrames();
+		grabber_.freeFrames();
 	}
 
 private:
-	Kinect2Grabber<PointT> * grabber_; 
+	Kinect2Grabber<PointT> & grabber_; 
 };
+
+template <typename PointT>
+class CvFrame{
+public:
+
+	cv::Mat data_;
+
+	CvFrame(Kinect2Grabber<PointT> & k): grabber_(k){
+		freenect_data_ = grabber_.getRgbFrame();
+		data_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_8UC3, freenect_data_->data);
+	}
+
+	~CvFrame(){
+		grabber_.freeFrames();
+	}
+
+private:
+	Kinect2Grabber<PointT> & grabber_; 
+	libfreenect2::Frame * freenect_data_;
+};
+
 
 }
 
