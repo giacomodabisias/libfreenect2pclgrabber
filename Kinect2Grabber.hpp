@@ -95,6 +95,12 @@ void sigintHandler(int s)
 
 namespace Kinect2Grabber {
 
+template <typename PointT>
+class Frame;
+
+template <typename PointT>
+class CvFrame;
+
 template< typename PointT>
 class Kinect2Grabber
 {
