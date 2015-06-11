@@ -17,13 +17,14 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
-#include <pcl/visualization/cloud_viewer.h>
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include "GL/glew.h"
-#include <libfreenect2/opengl.h>
+//#include <libfreenect2/opengl.h>
 #include <signal.h>
 #include <libfreenect2/libfreenect2.hpp>
+#include <libfreenect2/registration.h>
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/threading.h>
 #include <libfreenect2/rgb_packet_stream_parser.h>
@@ -46,6 +47,46 @@ bool shut_down = false;
 bool deb = true;
 
 
+struct microser
+{
+	microser(std::ostream & ons) : ons_(ons)
+	{}
+
+	std::ostream & ons_;
+};
+
+inline microser & operator << (microser & x, const uint32_t & y)
+{
+	x.ons_.write((const char*)&y,4);
+	return x;
+}
+
+inline microser & operator << (microser & x, const float & y)
+{
+	x.ons_.write((const char*)&y,4);
+	return x;
+	
+}
+
+inline microser & operator << (microser & x, const uint8_t &y)
+{
+	x.ons_.write((const char*)&y,1);
+	return x;
+	
+}
+ 
+inline microser & operator << (microser & x, const double & y)
+{
+	x.ons_.write((const char*)&y,8);
+	return x;
+	
+}
+
+inline microser & operator << (microser & x, const uint64_t & y)
+{
+	x.ons_.write((const char*)&y,8);
+	return x;
+}
 
 BOOST_SERIALIZATION_SPLIT_FREE(::cv::Mat)
 namespace boost {
@@ -111,7 +152,7 @@ public:
 	Kinect2Grabber( std::string rgb_image_folder_path,  std::string depth_image_folder_path, const int image_number, const cv::Size & board_size, const double square_size): 
 				    serialize_(false), init_rototranslation_(false)
 	{
-		glfwInit();
+		//glfwInit();
 		dev_ = freenect2_.openDefaultDevice();
 		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
 		if(dev_ == 0){
@@ -137,7 +178,7 @@ public:
 					serialize_(false), init_rototranslation_(false)
 	{
 
-		glfwInit();
+		//glfwInit();
 		dev_ = freenect2_.openDefaultDevice();
 		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
 		if(dev_ == 0){
@@ -156,10 +197,37 @@ public:
 
 		loadCalibration(rgb_calibration_file, depth_calibration_file, pose_calibration_file );
 
-		
 		printCalibration();
 		init();
 	}
+
+	Kinect2Grabber( ): 
+					serialize_(false), init_rototranslation_(false)
+	{
+
+		//glfwInit();
+		dev_ = freenect2_.openDefaultDevice();
+		ir_camera_params_ = dev_->getIrCameraParams();
+  		rgb_camera_params_ = dev_->getColorCameraParams();
+		registration_ = new libfreenect2::Registration(&ir_camera_params_, &rgb_camera_params_);
+
+		listener_ = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
+		if(dev_ == 0){
+			std::cout << "no device connected or failure opening the default one!" << std::endl;
+			exit(1);
+		}
+		signal(SIGINT,sigintHandler);
+		shut_down = false;
+		dev_->setColorFrameListener(listener_);
+		dev_->setIrAndDepthFrameListener(listener_);
+		dev_->start();
+
+		std::cout << "device initialized" << std::endl;
+		std::cout << "device serial: " << dev_->getSerialNumber() << std::endl;
+		std::cout << "device firmware: " << dev_->getFirmwareVersion() << std::endl;
+		initAutoRegistered();
+	}
+
 
 	~Kinect2Grabber(){
 		this->shutDown();
@@ -287,8 +355,8 @@ public:
 		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
 		cloud_->is_dense = false;
 		cloud_->points.resize(size_x * size_y);
-
 		frames_ =  *getRawFrames();
+
 		rgb_ = frames_[libfreenect2::Frame::Color];
 		depth_ = frames_[libfreenect2::Frame::Depth];
 		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
@@ -302,11 +370,14 @@ public:
 		depth_final_.convertTo(tmp_depth_, CV_16U);
 
 		cv::resize(rgb_final_, rgb_scaled_, cv::Size(size_x,size_y), cv::INTER_CUBIC);
-
-		if(serialize_)
-			serializeFrames(tmp_depth_, rgb_scaled_);
+		
+		/*if(serialize_)
+			serializeFrames(tmp_depth_, rgb_scaled_);*/
 		createFullCloud(tmp_depth_, rgb_scaled_, cloud_);
+		if(serialize_)
+			serializeCloud(cloud_);
 		listener_->release(frames_);
+
 		return cloud_;
 	}
 
@@ -371,36 +442,28 @@ public:
 		listener_->release(frames_);
 		return cloud_;
 	}
-/*
-	void
-	getEdges( pcl::PointCloud<pcl::PointXYZRGB>::Ptr in, pcl::PointCloud<pcl::PointXYZRGB>::Ptr out){
 
-		pcl::OrganizedEdgeFromRGBNormals<pcl::PointXYZRGB, pcl::Normal, pcl::Label> oed;
+	typename pcl::PointCloud<PointT>::Ptr
+	getCloudAutoRegistered(const int size_x = 512, const int size_y = 424){
+		typename pcl::PointCloud<PointT>::Ptr cloud_(new pcl::PointCloud<PointT>());
+		cloud_->is_dense = false;
+		
+		frames_ =  *getRawFrames();
+		rgb_ = frames_[libfreenect2::Frame::Color];
+		depth_ = frames_[libfreenect2::Frame::Depth];
+		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
+		
 
-		pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> norm_est_;
-		norm_est_.setKSearch (10);
-		pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal> ());
-  		norm_est_.setInputCloud (in);
-  		norm_est_.compute (*normals);
-  		std::cout << "points "<<  in->points.size() << " computed normals " << normals->points.size() << std::endl;
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		rgb_final_ = tmp_rgb_;
+		cv::flip(tmp_depth_, tmp_depth_, 1);
+		cv::flip(rgb_final_, rgb_final_, 1);
+		tmp_depth_.convertTo(depth_final_, CV_16U);
 
-		oed.setInputNormals (normals);
-		oed.setInputCloud (in);
-		oed.setDepthDisconThreshold (0.02); // 2cm
-		oed.setMaxSearchNeighbors (50);
-		oed.setEdgeType (oed.EDGELABEL_NAN_BOUNDARY | oed.EDGELABEL_OCCLUDING | oed.EDGELABEL_OCCLUDED);
-		pcl::PointCloud<pcl::Label> labels;
-		std::vector<pcl::PointIndices> label_indices;
-		std::cout << "oed compute " << std::endl;
-		oed.compute (labels, label_indices);
-		for(auto i: label_indices)
-			std::cout <<  i.indices.size() << std::endl;
-		pcl::copyPointCloud (*in, label_indices[0].indices, *out);
-		pcl::copyPointCloud (*in, label_indices[1].indices, *out);
-		pcl::copyPointCloud (*in, label_indices[2].indices, *out);
-		pcl::copyPointCloud (*in, label_indices[3].indices, *out);
-		pcl::copyPointCloud (*in, label_indices[4].indices, *out);
-	}*/
+		createCloudAutoRegistered(depth_final_, rgb_final_, cloud_);
+		listener_->release(frames_);
+		return cloud_;
+	}
 
 private:
 
@@ -462,6 +525,15 @@ private:
 	void
 	init(const int size_x=512 , const int size_y=424){
 		initSizeAndData(size_x,size_y);
+		unsigned threads = omp_get_max_threads();
+		partial_clouds_.resize(threads);
+		for(int i = 0; i < threads; ++i)
+			partial_clouds_[i].reserve((size_x * size_y) / threads + 1 );
+		distance_ = 10000;
+	}
+
+	void
+	initAutoRegistered(const int size_x=512 , const int size_y=424){
 		unsigned threads = omp_get_max_threads();
 		partial_clouds_.resize(threads);
 		for(int i = 0; i < threads; ++i)
@@ -662,60 +734,6 @@ private:
 		savePoseParams("pose_calibration.yaml", rotation_, translation_, essential_, fundamental_, rms);
 	}
 
-	
-
-/*
-	void 
-	createFullCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) const
-	{
-		#pragma omp parallel for
-		for(int y = 0; y < depth.rows; ++y)
-		{	
-			PointT *itP = &cloud->points[y * depth.cols];
-			const uint16_t *itD = depth.ptr<uint16_t>(y);
-
-			for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD )
-			{
-				const float depth_value = *itD / 1000.0f;
-				// Check for invalid measurements
-				if(isnan(depth_value) || *itD >= distance_)
-				{
-					// not valid
-					itP->x = itP->y = itP->z = std::numeric_limits<float>::quiet_NaN();
-					itP->rgba = 0;
-					continue;
-				}
-
-				//to depth world
-				float final_x = (x - ir_cx_ ) / (ir_fx_ ) * depth_value;
-				float final_y = (y - ir_cy_ ) / (ir_fy_ ) * depth_value;
-				Eigen::Vector3d ir_world(final_x, final_y , depth_value);
-
-				//depth world to rgb world
-				Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
-				Eigen::Matrix3d rotation = mappedMat;
-				Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
-				Eigen::Vector3d translation = mappedMat2;
-
-				Eigen::Vector3d rgb_world = rotation * ir_world + translation;
-
-				//rgb world to rgb image
-				int rgb_image_x =  ((rgb_world.x() * (rgb_fx_ ) / depth_value)) + rgb_cx_ ;
-				int rgb_image_y = ((rgb_world.y() * (rgb_fy_ ) / depth_value)) + rgb_cy_ ;
-
-				if(rgb_image_x > 0 && rgb_image_x < color.cols && rgb_image_y > 0 && rgb_image_y < color.rows){
-					itP->z = depth_value;
-					itP->x = final_x;
-					itP->y = final_y;
-					const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
-					itP->b = tmp.val[0];
-					itP->g = tmp.val[1];
-					itP->r = tmp.val[2];
-				}
-			}
-		}
-	}*/
-
 	void
 	initRotoTranslation()
 	{
@@ -789,6 +807,71 @@ private:
 					itP->y = pworld.y() ;
 
 					const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_img.y(), rgb_img.x());
+					itP->b = tmp.val[0];
+					itP->g = tmp.val[1];
+					itP->r = tmp.val[2];
+				}
+			}
+		}
+	}
+
+	void 
+	createCloudAutoRegistered(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) 
+	{
+		Eigen::Matrix4d d_matrix;
+		d_matrix(0,0) = ir_camera_params_.fx;
+		d_matrix(0,1) = 0;
+		d_matrix(0,2) = ir_camera_params_.cx;
+		d_matrix(0,3) = 0;
+		d_matrix(1,0) = 0;
+		d_matrix(1,1) = ir_camera_params_.fy;
+		d_matrix(1,2) = ir_camera_params_.cy;
+		d_matrix(1,3) = 0;
+		d_matrix(2,0) = 0;
+		d_matrix(2,1) = 0;
+		d_matrix(2,2) = 1;
+		d_matrix(2,3) = 0;
+		d_matrix(3,0) = 0;
+		d_matrix(3,1) = 0;
+		d_matrix(3,2) = 0;
+		d_matrix(3,3) = 1;
+
+
+		#pragma omp parallel for
+		for(int y = 0; y < depth.rows; ++y)
+		{	
+			PointT *itP = &cloud->points[y * depth.cols];
+			const uint16_t *itD = depth.ptr<uint16_t>(y);
+
+			for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itP, ++itD )
+			{
+				const float depth_value = *itD / 1000.0f;
+				// Check for invalid measurements
+				if(isnan(depth_value) || *itD >= distance_)
+				{
+					// not valid
+					itP->x = itP->y = itP->z = std::numeric_limits<float>::quiet_NaN();
+					itP->rgba = 0;
+					continue;
+				}
+
+				Eigen::Vector4d psd(x, y, 1.0, 1.0/depth_value);
+				Eigen::Vector4d psddiv = psd * depth_value;
+
+				Eigen::Vector4d  pworld = d_matrix * psddiv;
+
+				float x_color;
+				float y_color;
+
+				registration_->apply(x, y, depth_value, x_color, y_color);
+				if(x_color > 0 && x_color < color.cols && y_color > 0 && y_color < color.rows){
+					
+					itP->z = depth_value;
+					itP->x = pworld.x() ;
+					itP->y = pworld.y() ;
+
+
+					const cv::Vec3b tmp = color.at<cv::Vec3b>(y_color, x_color);
 					itP->b = tmp.val[0];
 					itP->g = tmp.val[1];
 					itP->r = tmp.val[2];
@@ -948,67 +1031,6 @@ private:
 		}	
 	}
 
-/*
-	void 
-	createCloud(const cv::Mat & depth, const cv::Mat & color, typename pcl::PointCloud<PointT>::Ptr & cloud) 
-	{
-		#pragma omp parallel for 
-		for(int y = 0; y < depth.rows; ++y)
-		{	
-			PointT itP ;
-			const uint16_t *itD = depth.ptr<uint16_t>(y);
-
-			for(size_t x = 0; x < (size_t)depth.cols; ++x, ++itD )
-			{
-				const float depth_value = *itD / 1000.0f;
-				// Check for invalid measurements
-				if(isnan(depth_value) || *itD >= distance_)
-				{
-					continue;
-				}
-
-				//to depth world
-				float final_x = (x - ir_cx_ ) / (ir_fx_ ) * depth_value;
-				float final_y = (y - ir_cy_ ) / (ir_fy_ ) * depth_value;
-				Eigen::Vector3d ir_world(final_x, final_y , depth_value);
-
-				//depth world to rgb world
-				Eigen::Map<Eigen::Matrix<double,3,3, Eigen::RowMajor> > mappedMat((double*)(rotation_.data));
-				Eigen::Matrix3d rotation = mappedMat;
-				Eigen::Map<Eigen::Vector3d> mappedMat2 ((double*)(translation_.data));
-				Eigen::Vector3d translation = mappedMat2;
-
-				Eigen::Vector3d rgb_world = rotation * ir_world + translation;
-
-				//rgb world to rgb image
-				int rgb_image_x =  ((rgb_world.x() * (rgb_fx_ ) / depth_value)) + rgb_cx_ ;
-				int rgb_image_y = ((rgb_world.y() * (rgb_fy_ ) / depth_value)) + rgb_cy_ ;
-
-				if(rgb_image_x > 0 && rgb_image_x < color.cols && rgb_image_y > 0 && rgb_image_y < color.rows){
-					itP.z = depth_value;
-					itP.x = final_x;
-					itP.y = final_y;
-					const cv::Vec3b tmp = color.at<cv::Vec3b>(rgb_image_y, rgb_image_x);
-					itP.b = tmp.val[0];
-					itP.g = tmp.val[1];
-					itP.r = tmp.val[2];
-					partial_clouds_[omp_get_thread_num()].push_back(itP);
-				}
-			}
-		}
-		int total_points = 0;
-		for(auto& cloud: partial_clouds_)
-			total_points += cloud.size();
-
-		cloud->points.resize(total_points);
-		int current = 0;
-		for(auto& pcloud: partial_clouds_){
-			int size = pcloud.size();
-			memcpy( &(cloud->points[current]), &(pcloud[0]), size * sizeof(PointT)) ;
-			current += size;
-		}	
-	}*/
-
 	void
 	serializeFrames(const cv::Mat & depth, const cv::Mat & color)
 	{	
@@ -1022,6 +1044,24 @@ private:
 		}
 
 		(*oa_) << now << depth << color;
+	}
+
+	void
+	serializeCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
+	{	
+		struct timeval tv;
+    	gettimeofday(&tv,NULL);
+    	uint64_t now = tv.tv_sec*(uint64_t)1000000 + tv.tv_usec;
+		if(file_streamer_ == 0){
+			file_streamer_ = new std::ofstream();
+			file_streamer_->open ("stream", std::ios::binary);
+		}
+
+		microser sr(*file_streamer_);
+		sr << now << (uint32_t)cloud->size();
+		for(auto &p : cloud->points){
+			sr << p.x << p.y << p.z << p.r << p.g << p.b;
+		}
 	}
 
 	void 
@@ -1178,6 +1218,7 @@ private:
 	}
 
 	libfreenect2::Freenect2 freenect2_;
+	libfreenect2::Registration * registration_ = 0;
 	libfreenect2::Freenect2Device * dev_ = 0;
 	libfreenect2::SyncMultiFrameListener * listener_ = 0;
 	libfreenect2::Frame * depth_ = 0;
@@ -1197,6 +1238,9 @@ private:
   	boost::archive::binary_oarchive * oa_ = 0;
   	Eigen::Matrix4d world2rgb_;
   	Eigen::Matrix4d depth2world_ ;
+  	libfreenect2::Freenect2Device::IrCameraParams ir_camera_params_;
+    libfreenect2::Freenect2Device::ColorCameraParams rgb_camera_params_;
+  	
 
 };
 
