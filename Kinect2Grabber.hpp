@@ -1282,6 +1282,51 @@ private:
 	libfreenect2::Frame * freenect_data_;
 };
 
+template <typename PointT>
+class CvFrameRgb{
+public:
+
+	cv::Mat data_;
+
+	CvFrameRgb(Kinect2Grabber<PointT> & k): grabber_(k){
+		std::cout << "getting freenect data rgb" << std::endl;
+		freenect_data_ = grabber_.getRgbFrame();
+		std::cout << "copy freenect data rgb" << std::endl;
+		data_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_8UC3, freenect_data_->data);
+	}
+
+	~CvFrameRgb(){
+		grabber_.freeFrames();
+	}
+
+private:
+	Kinect2Grabber<PointT> & grabber_; 
+	libfreenect2::Frame * freenect_data_;
+};
+
+template <typename PointT>
+class CvFrameDepth{
+public:
+
+	cv::Mat data_, data2_;
+
+	CvFrameDepth(Kinect2Grabber<PointT> & k): grabber_(k){
+		std::cout << "getting freenect data depth" << std::endl;
+		freenect_data_ = grabber_.getDepthFrame();
+		std::cout << "copy freenect data depth" << std::endl;
+		data2_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_32FC1, freenect_data_->data);
+		data2_.convertTo(data_, CV_16U);
+	}
+
+	~CvFrameDepth(){
+		grabber_.freeFrames();
+	}
+
+private:
+	Kinect2Grabber<PointT> & grabber_; 
+	libfreenect2::Frame * freenect_data_;
+};
+
 
 }
 

@@ -1,5 +1,5 @@
 %YAML:1.0
-calibration_time: "Thu Dec  4 10:31:28 2014"
+calibration_time: "Thu Dec 11 16:21:28 2014"
 rotation matrix: !!opencv-matrix
    rows: 3
    cols: 3

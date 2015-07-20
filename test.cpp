@@ -21,25 +21,24 @@ int main(int argc, char *argv[])
   //The parameters are: rgb image folder, depth image folder, number of images, size of the checkboard, size of the check board squares in m
   //The second constructor load an existing calibration
   
-  //Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images/rgb/", "./images/ir/", 16, cv::Size(6,9), 0.025 );
+  //Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("./images512/rgb/", "./images512/ir/", 16, cv::Size(6,9), 0.025 );
   Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g("../calibration/rgb_calibration.yaml", "../calibration/depth_calibration.yaml", "../calibration/pose_calibration.yaml");
-
+  //Kinect2Grabber::Kinect2Grabber<pcl::PointXYZRGB> k2g;
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
-  k2g.setDistance(3000);
-
+  k2g.setDistance(10000);
+  std::cout << "getting cloud" << std::endl;
   cloud = k2g.getFullCloud();
+  //cloud = k2g.getCloud();
 
   cloud->sensor_orientation_.w() = 0.0;
   cloud->sensor_orientation_.x() = 1.0;
   cloud->sensor_orientation_.y() = 0.0;
   cloud->sensor_orientation_.z() = 0.0;
-
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
   viewer->setBackgroundColor (0, 0, 0);
   pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
   viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
   viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-  
   while (!viewer->wasStopped ()) {
     viewer->spinOnce ();
     using namespace std::chrono;
@@ -47,6 +46,8 @@ int main(int argc, char *argv[])
 
     auto tnow = high_resolution_clock::now();
     cloud = k2g.getFullCloud();
+
+    //cloud = k2g.getCloud();
     auto tpost = high_resolution_clock::now();
     std::cout << "delta " << duration_cast<duration<double>>(tpost-last).count()*1000 << " " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
     last = tpost;
