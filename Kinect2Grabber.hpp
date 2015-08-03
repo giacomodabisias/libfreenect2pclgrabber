@@ -525,7 +525,12 @@ private:
 	void
 	init(const int size_x=512 , const int size_y=424){
 		initSizeAndData(size_x,size_y);
+#ifdef HAVE_OPENMP
 		unsigned threads = omp_get_max_threads();
+#else
+        /// @todo handle this better
+        unsigned threads = 1;
+#endif 
 		partial_clouds_.resize(threads);
 		for(int i = 0; i < threads; ++i)
 			partial_clouds_[i].reserve((size_x * size_y) / threads + 1 );
@@ -534,7 +539,12 @@ private:
 
 	void
 	initAutoRegistered(const int size_x=512 , const int size_y=424){
+#ifdef HAVE_OPENMP
 		unsigned threads = omp_get_max_threads();
+#else
+        /// @todo handle this better
+        unsigned threads = 1;
+#endif 
 		partial_clouds_.resize(threads);
 		for(int i = 0; i < threads; ++i)
 			partial_clouds_[i].reserve((size_x * size_y) / threads + 1 );
@@ -773,7 +783,9 @@ private:
 			init_rototranslation_ = true;
 		}
 
+#ifdef HAVE_OPENMP
 		#pragma omp parallel for
+#endif
 		for(int y = 0; y < depth.rows; ++y)
 		{	
 			PointT *itP = &cloud->points[y * depth.cols];
@@ -836,8 +848,9 @@ private:
 		d_matrix(3,2) = 0;
 		d_matrix(3,3) = 1;
 
-
+#ifdef HAVE_OPENMP
 		#pragma omp parallel for
+#endif
 		for(int y = 0; y < depth.rows; ++y)
 		{	
 			PointT *itP = &cloud->points[y * depth.cols];
@@ -927,7 +940,9 @@ private:
 		int newone = 0;
 
 
-//		#pragma omp parallel for
+#ifdef HAVE_OPENMP
+		//#pragma omp parallel for
+#endif
 		for(int y = 0; y < color.rows; ++y)
 		{	
 			for(size_t x = 0; x < (size_t)color.cols; ++x)
@@ -981,7 +996,9 @@ private:
 			init_rototranslation_ = true;
 		}
 
+#ifdef HAVE_OPENMP
 		#pragma omp parallel for
+#endif
 		for(int y = 0; y < depth.rows; ++y)
 		{	
 			PointT itP;
@@ -1014,7 +1031,12 @@ private:
 					itP.b = tmp.val[0];
 					itP.g = tmp.val[1];
 					itP.r = tmp.val[2];
-					partial_clouds_[omp_get_thread_num()].push_back(itP);
+#ifdef HAVE_OPENMP
+                    unsigned thread_num = omp_get_thread_num();
+#else
+                    unsigned thread_num = 1;
+#endif
+					partial_clouds_[thread_num].push_back(itP);
 				}
 			}
 		}
@@ -1070,7 +1092,9 @@ private:
 		scaled.create(size_registered, type);
 		if(type == CV_16U)
 		{
-			#pragma omp parallel for
+#ifdef HAVE_OPENMP
+		#pragma omp parallel for
+#endif
 			for(size_t r = 0; r < (size_t)size_registered.height; ++r)
 			{
 				uint16_t *itO = scaled.ptr<uint16_t>(r);
@@ -1084,7 +1108,10 @@ private:
 		}
 		else
 		{
-			#pragma omp parallel for
+            
+#ifdef HAVE_OPENMP
+		#pragma omp parallel for
+#endif
 			for(size_t r = 0; r < (size_t)size_registered.height; ++r)
 			{
 				float *itO = scaled.ptr<float>(r);
