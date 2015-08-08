@@ -1034,7 +1034,7 @@ private:
 #ifdef HAVE_OPENMP
                     unsigned thread_num = omp_get_thread_num();
 #else
-                    unsigned thread_num = 1;
+                    unsigned thread_num = 0;
 #endif
 					partial_clouds_[thread_num].push_back(itP);
 				}
