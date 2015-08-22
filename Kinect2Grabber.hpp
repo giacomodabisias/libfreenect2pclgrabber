@@ -362,7 +362,7 @@ public:
 		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
 		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x, size_y),CV_32FC1);
 
-		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC4, rgb_->data);
 		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
 		rgb_final_ = tmp_rgb_;
 		cv::flip(depth_final_, depth_final_, 1);
@@ -396,7 +396,7 @@ public:
 		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
 		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
 
-		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC4, rgb_->data);
 		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
 		rgb_final_ = tmp_rgb_;
 		cv::flip(depth_final_, depth_final_, 1);
@@ -425,7 +425,7 @@ public:
 		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
 		remapDepth(tmp_depth_,depth_final_,cv::Size(size_x,size_y),CV_32FC1);
 
-		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC4, rgb_->data);
 		//cv::remap(tmp_rgb_, rgb_final_, map_x_rgb_, map_y_rgb_, cv::INTER_LINEAR);
 		rgb_final_ = tmp_rgb_;
 		cv::flip(depth_final_, depth_final_, 1);
@@ -454,7 +454,7 @@ public:
 		tmp_depth_ = cv::Mat(depth_->height, depth_->width, CV_32FC1, depth_->data);
 		
 
-		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC3, rgb_->data);
+		tmp_rgb_ = cv::Mat(rgb_->height, rgb_->width, CV_8UC4, rgb_->data);
 		rgb_final_ = tmp_rgb_;
 		cv::flip(tmp_depth_, tmp_depth_, 1);
 		cv::flip(rgb_final_, rgb_final_, 1);
@@ -1155,10 +1155,10 @@ private:
 
 		const float avg = (pLT + pRT + pLB + pRB) / count;
 		const float thres = 0.01 * avg;
-		vLT = abs(pLT - avg) < thres;
-		vRT = abs(pRT - avg) < thres;
-		vLB = abs(pLB - avg) < thres;
-		vRB = abs(pRB - avg) < thres;
+		vLT = std::abs(pLT - avg) < thres;
+		vRT = std::abs(pRT - avg) < thres;
+		vLB = std::abs(pLB - avg) < thres;
+		vRB = std::abs(pRB - avg) < thres;
 		count = vLT + vRT + vLB + vRB;
 
 		if(count < 3)
@@ -1297,7 +1297,7 @@ public:
 
 	CvFrame(Kinect2Grabber<PointT> & k): grabber_(k){
 		freenect_data_ = grabber_.getRgbFrame();
-		data_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_8UC3, freenect_data_->data);
+		data_ = cv::Mat(freenect_data_->height, freenect_data_->width, CV_8UC4, freenect_data_->data);
 	}
 
 	~CvFrame(){
