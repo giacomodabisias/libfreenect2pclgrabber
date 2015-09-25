@@ -130,25 +130,19 @@ public:
 		{	
 			const unsigned int offset = y * w;
 			const float * itD = itD0 + offset;
-			const char * itRGB = itRGB0 + offset*4;
+			const char * itRGB = itRGB0 + offset * 4;
 			
 			for(size_t x = 0; x < w; ++x, ++itP, ++itD, itRGB += 4 )
 			{
 				const float depth_value = *itD / 1000.0f;
 				
-				if(isnan(depth_value))
-				{
-					itP->x = itP->y = itP->z = std::numeric_limits<float>::quiet_NaN();
-					itP->rgba = 0;
-
-				}else{
-
+				if(!isnan(depth_value) && !(abs(depth_value) < 0.001)){
+	
 					Eigen::Vector4d psd(x, y, 1.0, 1.0 / depth_value);
 					pworld_ = d_matrix_inv_ * psd * depth_value;
 					itP->z = depth_value;
-
-					itP->x = isnan(pworld_.x()) ? 0 : pworld_.x();
-					itP->y = isnan(pworld_.y()) ? 0 : pworld_.y();
+					itP->x =  pworld_.x();
+					itP->y =  pworld_.y();
 
 					itP->b = itRGB[0];
 					itP->g = itRGB[1];
@@ -166,13 +160,15 @@ public:
   		dev_->close();
 	}
 
-	cv::Mat * getColor(){
+	cv::Mat getColor(){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
-		cv::Mat * tmp = new cv::Mat(rgb->height, rgb->width, CV_8UC4, rgb->data);
+		cv::Mat tmp(rgb->height, rgb->width, CV_8UC4, rgb->data);
+		cv::Mat r = tmp.clone();
 		listener_.release(frames_);
-		return tmp;
+		return std::move(r);
 	}
+
 private:
 
 	libfreenect2::Freenect2 freenect2_;
