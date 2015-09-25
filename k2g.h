@@ -22,16 +22,11 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 
 #include <libfreenect2/libfreenect2.hpp>
 #include <libfreenect2/frame_listener_impl.h>
-#include <libfreenect2/threading.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/registration.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
-#include <thread>
-#include <vector>
 #include <signal.h>
 #include <string>
 #include <iostream>
