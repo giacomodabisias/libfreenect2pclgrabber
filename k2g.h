@@ -136,13 +136,13 @@ public:
 			{
 				const float depth_value = *itD / 1000.0f;
 				
-				if(!isnan(depth_value) && !(abs(depth_value) < 0.001)){
+				if(!isnan(depth_value) && !(abs(depth_value) < 0.0001)){
 	
 					Eigen::Vector4d psd(x, y, 1.0, 1.0 / depth_value);
 					pworld_ = d_matrix_inv_ * psd * depth_value;
 					itP->z = depth_value;
-					itP->x =  pworld_.x();
-					itP->y =  pworld_.y();
+					itP->x = pworld_.x();
+					itP->y = pworld_.y();
 
 					itP->b = itRGB[0];
 					itP->g = itRGB[1];
@@ -150,7 +150,6 @@ public:
 				}
 			}
 		}
-
 		listener_.release(frames_);
 		return cloud;
 	}
@@ -167,6 +166,28 @@ public:
 		cv::Mat r = tmp.clone();
 		listener_.release(frames_);
 		return std::move(r);
+	}
+
+	cv::Mat getDepth(){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+		cv::Mat tmp(depth->height, depth->width, CV_8UC4, depth->data);
+		cv::Mat r = tmp.clone();
+		listener_.release(frames_);
+		return std::move(r);
+	}
+
+	std::tuple<cv::Mat, cv::Mat> getDepthRgb(){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		registration_->apply(rgb, depth, &undistorted_, &registered_);
+		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_8UC4, undistorted_.data);
+		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
+		cv::Mat r = tmp_color.clone();
+		cv::Mat d = tmp_depth.clone();
+		listener_.release(frames_);
+		return std::move(std::tuple<cv::Mat, cv::Mat>(r,d));
 	}
 
 private:
