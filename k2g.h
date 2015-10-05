@@ -177,7 +177,7 @@ public:
 		return std::move(r);
 	}
 
-	std::tuple<cv::Mat, cv::Mat> getDepthRgb(){
+	std::pair<cv::Mat, cv::Mat> getDepthRgb(){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
@@ -187,7 +187,7 @@ public:
 		cv::Mat r = tmp_color.clone();
 		cv::Mat d = tmp_depth.clone();
 		listener_.release(frames_);
-		return std::move(std::tuple<cv::Mat, cv::Mat>(r,d));
+		return std::move(std::pair<cv::Mat, cv::Mat>(r,d));
 	}
 
 private:
