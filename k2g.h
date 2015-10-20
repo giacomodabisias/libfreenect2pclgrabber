@@ -20,15 +20,16 @@ Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 */
 
+#include <string>
 #include <libfreenect2/libfreenect2.hpp>
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/registration.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/io/grabber.h>
 #include <opencv2/opencv.hpp>
 #include <signal.h>
-#include <string>
 #include <iostream>
 #include <Eigen/Core>
 
@@ -43,7 +44,7 @@ void sigint_handler(int s)
 	stop = true;
 }
 
-class K2G {
+class K2G : public pcl::Grabber {
 
 public:
 
@@ -94,6 +95,39 @@ public:
 		std::cout << "Camera matrix:" << std::endl;
 		std::cout << d_matrix_ << std::endl;
  	}
+
+	~K2G() throw() {
+		//pcl::~Grabber();
+		stop();
+		delete dev_;
+		delete pipeline_;
+		delete registration_;
+	}
+
+	void start(){
+		//TODO: move device init here. Not replaced yet for compatibility.
+	}
+
+	void stop(){
+		shutDown();
+		//TODO: rename shutDown() as stop(). Not replaced yet for compatibility.
+	}
+
+	bool providesCallback(){
+		return false;
+	}
+
+	std::string getName() const{
+		return "K2G";
+	}
+
+	bool isRunning() const{
+		return true;
+	}
+
+	float getFramesPerSecond() const{
+		return -1;
+	}
 
  	/*
 	void addCallback(std::function f){
@@ -157,7 +191,7 @@ public:
 
 	void shutDown(){
 		dev_->stop();
-  		dev_->close();
+		dev_->close();
 	}
 
 	cv::Mat getColor(){
@@ -166,7 +200,7 @@ public:
 		cv::Mat tmp(rgb->height, rgb->width, CV_8UC4, rgb->data);
 		cv::Mat r = tmp.clone();
 		listener_.release(frames_);
-		return std::move(r);
+		return r;
 	}
 
 private:
