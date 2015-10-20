@@ -43,7 +43,6 @@ int main(int argc, char *argv[])
     cloud = k2g.getCloud();
     auto tpost = high_resolution_clock::now();
     std::cout << "delta " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
-    
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
     viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud"); 
   }
