@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
-Project (Kinect2Grabber CXX)
+project (Kinect2Grabber CXX)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
-set(CMAKE_CXX_FLAHS "${CMAKE_CXX_FLAGS} -march=native")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 set(CMAKE_BUILD_TYPE Release) 
 
 find_package(OpenCV REQUIRED)
