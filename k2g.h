@@ -47,7 +47,7 @@ class K2G {
 
 public:
 
-	K2G(processor p): undistorted_(512, 424, 4), registered_(512, 424, 4), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth){
+	K2G(processor p): undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth){
 
 		signal(SIGINT,sigint_handler);
 
@@ -84,15 +84,7 @@ public:
 
 		registration_ = new libfreenect2::Registration(dev_->getIrCameraParams(), dev_->getColorCameraParams());
 
-		d_matrix_ = Eigen::Matrix4d::Identity();
-		d_matrix_(0,0) = dev_->getIrCameraParams().fx;
-		d_matrix_(0,2) = dev_->getIrCameraParams().cx;
-		d_matrix_(1,1) = dev_->getIrCameraParams().fy;
-		d_matrix_(1,2) = dev_->getIrCameraParams().cy;
-
-		d_matrix_inv_ = d_matrix_.inverse();
-		std::cout << "Camera matrix:" << std::endl;
-		std::cout << d_matrix_ << std::endl;
+		preparemake3D(dev_->getIrCameraParams());
  	}
 
  	/*
@@ -116,7 +108,7 @@ public:
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 
-		registration_->apply(rgb, depth, &undistorted_, &registered_);
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
 
@@ -126,23 +118,24 @@ public:
 		const char * itRGB0 = (char *)registered_.data;
 		pcl::PointXYZRGB * itP = &cloud->points[0];
 		
-		for(int y = 0; y < h; ++y)
-		{	
+		for(int y = 0; y < h; ++y){
+
 			const unsigned int offset = y * w;
 			const float * itD = itD0 + offset;
 			const char * itRGB = itRGB0 + offset * 4;
-			
+			const float dy = rowmap(y);
+
 			for(size_t x = 0; x < w; ++x, ++itP, ++itD, itRGB += 4 )
 			{
 				const float depth_value = *itD / 1000.0f;
 				
 				if(!isnan(depth_value) && !(abs(depth_value) < 0.0001)){
 	
-					Eigen::Vector4d psd(x, y, 1.0, 1.0 / depth_value);
-					pworld_ = d_matrix_inv_ * psd * depth_value;
+					const float rx = colmap(x) * depth_value;
+                	const float ry = dy * depth_value;               
 					itP->z = depth_value;
-					itP->x = pworld_.x();
-					itP->y = pworld_.y();
+					itP->x = rx;
+					itP->y = ry;
 
 					itP->b = itRGB[0];
 					itP->g = itRGB[1];
@@ -192,15 +185,31 @@ public:
 
 private:
 
+	void prepareMake3D(const libfreenect2::Freenect2Device::IrCameraParams & depth_p)
+	{
+		const int w = 512;
+		const int h = 424;
+	    float * pm1 = colmap.data();
+	    float * pm2 = rowmap.data();
+	    for(int i = 0; i < w; i++)
+	    {
+	        *pm1++ = (i-depth_p.cx + 0.5) / depth_p.fx;
+	    }
+	    for (int i = 0; i < h; i++)
+	    {
+	        *pm2++ = (i-depth_p.cy + 0.5) / depth_p.fy;
+	    }
+	}
+
 	libfreenect2::Freenect2 freenect2_;
 	libfreenect2::Freenect2Device * dev_ = 0;
 	libfreenect2::PacketPipeline * pipeline_ = 0;
 	libfreenect2::Registration * registration_ = 0;
 	libfreenect2::SyncMultiFrameListener listener_;
 	libfreenect2::FrameMap frames_;
-	libfreenect2::Frame undistorted_, registered_;
-	Eigen::Vector4d pworld_;
-	Eigen::Matrix4d d_matrix_, d_matrix_inv_;
-	//std::vector<std::function> callbacks_;
+	libfreenect2::Frame undistorted_, registered_, big_mat_;
+	Eigen::Matrix<float,512,1> colmap;
+	Eigen::Matrix<float,424,1> rowmap;
 	std::string serial_;
+	int map_[512 * 424];
 };
