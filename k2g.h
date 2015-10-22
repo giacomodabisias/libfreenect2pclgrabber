@@ -84,7 +84,7 @@ public:
 
 		registration_ = new libfreenect2::Registration(dev_->getIrCameraParams(), dev_->getColorCameraParams());
 
-		preparemake3D(dev_->getIrCameraParams());
+		prepareMake3D(dev_->getIrCameraParams());
  	}
 
  	/*
@@ -108,7 +108,7 @@ public:
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 
-		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_);
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
 
