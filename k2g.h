@@ -103,6 +103,15 @@ public:
 	}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
+		const short w = undistorted_.width;
+		const short h = undistorted_.height;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>(w, h));
+        
+		return updateCloud(cloud);
+	}
+    
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
 		
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
@@ -111,8 +120,6 @@ public:
 		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_);
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
-
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>(w, h));
 
 		const float * itD0 = (float *)undistorted_.data;
 		const char * itRGB0 = (char *)registered_.data;

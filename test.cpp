@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     static high_resolution_clock::time_point last;
 
     auto tnow = high_resolution_clock::now();   
-    cloud = k2g.getCloud();
+    cloud = k2g.updateCloud(cloud);
     auto tpost = high_resolution_clock::now();
     std::cout << "delta " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
