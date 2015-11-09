@@ -29,7 +29,9 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <opencv2/opencv.hpp>
 #include <signal.h>
 #include <string>
+#include <limits>
 #include <iostream>
+#include <cstdlib>
 #include <Eigen/Core>
 
 bool stop = false;
@@ -47,7 +49,7 @@ class K2G {
 
 public:
 
-	K2G(processor p): undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth){
+	K2G(processor p): undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth),qnan_(std::numeric_limits<float>::quiet_NaN()){
 
 		signal(SIGINT,sigint_handler);
 
@@ -124,6 +126,7 @@ public:
 		const float * itD0 = (float *)undistorted_.data;
 		const char * itRGB0 = (char *)registered_.data;
 		pcl::PointXYZRGB * itP = &cloud->points[0];
+        bool is_dense = true;
 		
 		for(int y = 0; y < h; ++y){
 
@@ -136,7 +139,7 @@ public:
 			{
 				const float depth_value = *itD / 1000.0f;
 				
-				if(!isnan(depth_value) && !(abs(depth_value) < 0.0001)){
+				if(!std::isnan(depth_value) && !(std::abs(depth_value) < 0.0001)){
 	
 					const float rx = colmap(x) * depth_value;
                 	const float ry = dy * depth_value;               
@@ -147,9 +150,19 @@ public:
 					itP->b = itRGB[0];
 					itP->g = itRGB[1];
 					itP->r = itRGB[2];
+				} else {
+					itP->z = qnan_;
+					itP->x = qnan_;
+					itP->y = qnan_;
+
+					itP->b = qnan_;
+					itP->g = qnan_;
+					itP->r = qnan_;
+                    is_dense = false;
 				}
 			}
 		}
+        cloud->is_dense = is_dense;
 		listener_.release(frames_);
 		return cloud;
 	}
@@ -219,4 +232,5 @@ private:
 	Eigen::Matrix<float,424,1> rowmap;
 	std::string serial_;
 	int map_[512 * 424];
+	float qnan_;   
 };
