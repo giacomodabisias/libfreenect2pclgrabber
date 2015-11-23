@@ -11,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @Author 
-Giacomo. Dabisias, PhD Student
+Giacomo  Dabisias, PhD Student
 PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
@@ -23,30 +23,30 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 int main(int argc, char *argv[])
 {
   
-  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>(512, 424));
   K2G k2g(OPENGL);
   std::cout << "getting cloud" << std::endl;
-  cloud = k2g.getCloud();
+  k2g.getCloud(cloud);
 
   cloud->sensor_orientation_.w() = 0.0;
   cloud->sensor_orientation_.x() = 1.0;
   cloud->sensor_orientation_.y() = 0.0;
   cloud->sensor_orientation_.z() = 0.0;
-  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  viewer->setBackgroundColor (0, 0, 0);
-  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-  
-  while (!viewer->wasStopped()) {
-    viewer->spinOnce ();
-    using namespace std::chrono;
-    static high_resolution_clock::time_point last;
 
-    auto tnow = high_resolution_clock::now();   
-    cloud = k2g.getCloud();
-    auto tpost = high_resolution_clock::now();
-    std::cout << "delta " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  viewer->setBackgroundColor(0, 0, 0);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+  viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "sample cloud");
+  viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+  
+  while(!viewer->wasStopped()){
+    viewer->spinOnce();
+    static std::chrono::high_resolution_clock::time_point last;
+
+    auto tnow = std::chrono::high_resolution_clock::now();   
+    k2g.getCloud(cloud);
+    auto tpost = std::chrono::high_resolution_clock::now();
+    std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() *1000 << std::endl;
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
     viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud"); 
   }
