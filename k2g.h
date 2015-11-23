@@ -14,7 +14,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 @Author 
-Giacomo. Dabisias, PhD Student
+Giacomo Dabisias, PhD Student
 PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
@@ -28,6 +28,8 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/point_types.h>
 #include <opencv2/opencv.hpp>
 #include <signal.h>
+#include <cstdlib>
+#include <limits>
 #include <string>
 #include <iostream>
 #include <Eigen/Core>
@@ -47,7 +49,7 @@ class K2G {
 
 public:
 
-	K2G(processor p): undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth){
+	K2G(processor p): undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth), qnan_(std::numeric_limits<float>::quiet_NaN()){
 
 		signal(SIGINT,sigint_handler);
 
@@ -87,11 +89,6 @@ public:
 		prepareMake3D(dev_->getIrCameraParams());
  	}
 
- 	/*
-	void addCallback(std::function f){
-		callbacks_.push_back(f);
-	}*/
-
 	libfreenect2::Freenect2Device::IrCameraParams getIrParameters(){
 		libfreenect2::Freenect2Device::IrCameraParams ir = dev_->getIrCameraParams();
 		return ir;
@@ -102,7 +99,8 @@ public:
 		return rgb;
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
+	// Allocates the cloud
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){  
 		
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
@@ -113,6 +111,62 @@ public:
 		const short h = undistorted_.height;
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>(w, h));
+
+		const float * itD0 = (float *)undistorted_.data;
+		const char * itRGB0 = (char *)registered_.data;
+		pcl::PointXYZRGB * itP = &cloud->points[0];
+		bool is_dense = true;
+		
+		for(int y = 0; y < h; ++y){
+
+			const unsigned int offset = y * w;
+			const float * itD = itD0 + offset;
+			const char * itRGB = itRGB0 + offset * 4;
+			const float dy = rowmap(y);
+
+			for(size_t x = 0; x < w; ++x, ++itP, ++itD, itRGB += 4 )
+			{
+				const float depth_value = *itD / 1000.0f;
+				
+				if(!std::isnan(depth_value) && !(std::abs(depth_value) < 0.0001)){
+	
+					const float rx = colmap(x) * depth_value;
+                	const float ry = dy * depth_value;               
+					itP->z = depth_value;
+					itP->x = rx;
+					itP->y = ry;
+
+					itP->b = itRGB[0];
+					itP->g = itRGB[1];
+					itP->r = itRGB[2];
+				} else {
+					itP->z = qnan_;
+					itP->x = qnan_;
+					itP->y = qnan_;
+
+					itP->b = qnan_;
+					itP->g = qnan_;
+					itP->r = qnan_;
+					is_dense = false;
+ 				}
+			}
+		}
+		cloud->is_dense = is_dense;
+		listener_.release(frames_);
+		return cloud;
+	}
+
+	// Does not allocate the cloud
+	void getCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud){
+		
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_);
+		const short w = undistorted_.width;
+		const short h = undistorted_.height;
+		bool is_dense = true;
 
 		const float * itD0 = (float *)undistorted_.data;
 		const char * itRGB0 = (char *)registered_.data;
@@ -129,7 +183,7 @@ public:
 			{
 				const float depth_value = *itD / 1000.0f;
 				
-				if(!isnan(depth_value) && !(abs(depth_value) < 0.0001)){
+				if(!std::isnan(depth_value) && !(std::abs(depth_value) < 0.0001)){
 	
 					const float rx = colmap(x) * depth_value;
                 	const float ry = dy * depth_value;               
@@ -140,11 +194,20 @@ public:
 					itP->b = itRGB[0];
 					itP->g = itRGB[1];
 					itP->r = itRGB[2];
-				}
+				} else {
+					itP->z = qnan_;
+					itP->x = qnan_;
+					itP->y = qnan_;
+
+					itP->b = qnan_;
+					itP->g = qnan_;
+					itP->r = qnan_;
+					is_dense = false;
+ 				}
 			}
 		}
+		cloud->is_dense = is_dense;
 		listener_.release(frames_);
-		return cloud;
 	}
 
 	void shutDown(){
@@ -211,5 +274,6 @@ private:
 	Eigen::Matrix<float,512,1> colmap;
 	Eigen::Matrix<float,424,1> rowmap;
 	std::string serial_;
-	int map_[512 * 424];
+	int map_[512 * 424]; // will be used in the next libfreenect2 update
+	float qnan_;
 };
