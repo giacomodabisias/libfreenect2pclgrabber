@@ -41,12 +41,11 @@ int main(int argc, char *argv[])
   
   while(!viewer->wasStopped()){
     viewer->spinOnce();
-    static std::chrono::high_resolution_clock::time_point last;
 
-    auto tnow = std::chrono::high_resolution_clock::now();   
+    std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();   
     k2g.getCloud(cloud);
-    auto tpost = std::chrono::high_resolution_clock::now();
-    std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() *1000 << std::endl;
+    std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
+    std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
     viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud"); 
   }

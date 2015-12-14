@@ -106,7 +106,7 @@ public:
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 
-		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_);
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
 
@@ -163,7 +163,7 @@ public:
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 
-		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_);
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
 		bool is_dense = true;
