@@ -17,27 +17,37 @@
 # PERCRO, (Laboratory of Perceptual Robotics)
 # Scuola Superiore Sant'Anna
 # via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
+#
+# - Try to find Freenect2
+# Once done this will define
+#
+#  FREENECT2_FOUND - system has Freenect2
+#  FREENECT2_INCLUDE_DIRS - the Freenect2 include directory
+#  FREENECT2_LIBRARY - Link these to use Freenect2
+#  FREENECT2_LIBRARIES
 
-cmake_minimum_required(VERSION 2.8)
-Project (Kinect2Grabber CXX)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-set(CMAKE_BUILD_TYPE Release) 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
 
-find_package(OpenCV REQUIRED)
-find_package(PCL 1.7 REQUIRED)
-find_package(Freenect2 REQUIRED)
+find_path(FREENECT2_INCLUDE_DIRS NAMES libfreenect2.hpp
+	HINTS
+	/usr/local/include/libfreenect2/
+	/usr/include/libfreenect2
+	/usr/local/include/
+	/usr/include/
+	}
+)
+ 
+find_library(FREENECT2_LIBRARY NAMES freenect2)
 
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
+if(FREENECT2_INCLUDE_DIRS AND FREENECT2_LIBRARY)
+  set(FREENECT2_FOUND TRUE)
+endif()
 
-include_directories(${OpenCV_INCLUDE_DIRS})
-include_directories(${PCL_INCLUDE_DIRS})
-include_directories(${FREENECT2_INCLUDE_DIRS})
+if(FREENECT2_LIBRARY)
+    set(FREENECT2_LIBRARY ${FREENECT2_LIBRARY})
+endif()
 
-add_executable(Kinect2Grabber test.cpp)
-
-target_link_libraries(Kinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES})
-
+if (FREENECT2_FOUND)
+  MESSAGE("-- Found Freenect2 ${FREENECT_LIBRARIES}")
+  mark_as_advanced(FREENECT2_INCLUDE_DIRS FREENECT2_LIBRARY FREENECT2_LIBRARIES)
+endif()
