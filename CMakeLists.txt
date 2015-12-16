@@ -27,16 +27,12 @@ Project (Kinect2Grabber CXX)
 
 OPTION(ENABLE_OPENCL "Enable OpenCL support" ON)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x") 
-
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 set(CMAKE_BUILD_TYPE Release) 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
 
 find_package(OpenCV REQUIRED)
 find_package(PCL 1.7 REQUIRED)
-find_package(Freenect2 REQUIRED)
 pkg_search_module(GLFW REQUIRED glfw3)
 
 
