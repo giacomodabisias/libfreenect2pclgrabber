@@ -1,5 +1,10 @@
 /*
 Copyright 2015, Giacomo Dabisias"
+
+
+Dual licensed with permission under GPLv3 or later and the 2 clause simplified BSD.
+https://github.com/giacomodabisias/libfreenect2pclgrabber/issues/10
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
