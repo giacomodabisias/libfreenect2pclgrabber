@@ -1,9 +1,5 @@
 /*
 Copyright 2015, Giacomo Dabisias"
-
-Dual licensed with permission under GPLv3 or later and the 2 clause simplified BSD.
-https://github.com/giacomodabisias/libfreenect2pclgrabber/issues/10
-
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -18,7 +14,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 @Author 
-Giacomo. Dabisias, PhD Student
+Giacomo Dabisias, PhD Student
 PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
@@ -32,22 +28,21 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/point_types.h>
 #include <opencv2/opencv.hpp>
 #include <signal.h>
-#include <string>
-#include <limits>
-#include <iostream>
 #include <cstdlib>
+#include <string>
+#include <iostream>
 #include <Eigen/Core>
 
-//bool stop = false;
+bool stop = false;
 
 enum processor{
 	CPU, OPENCL, OPENGL
 };
 
-// void sigint_handler(int s)
-// {
-//     stop = true;
-// }
+void sigint_handler(int s)
+{
+	stop = true;
+}
 
 class K2G {
 
@@ -55,7 +50,7 @@ public:
 
 	K2G(processor p, bool mirror = 1): mirror_(mirror), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth), undistorted_(512, 424, 4), registered_(512, 424, 4),big_mat_(1920, 1082, 4),qnan_(std::numeric_limits<float>::quiet_NaN()){
 
-		//signal(SIGINT,sigint_handler);
+		signal(SIGINT,sigint_handler);
 
 		if(freenect2_.enumerateDevices() == 0)
 		{
@@ -94,11 +89,6 @@ public:
 
 		prepareMake3D(dev_->getIrCameraParams());
  	}
-
- 	/*
-	void addCallback(std::function f){
-		callbacks_.push_back(f);
-	}*/
 
 	libfreenect2::Freenect2Device::IrCameraParams getIrParameters(){
 		libfreenect2::Freenect2Device::IrCameraParams ir = dev_->getIrCameraParams();
@@ -175,11 +165,11 @@ public:
 					itP->b = qnan_;
 					itP->g = qnan_;
 					itP->r = qnan_;
-                    is_dense = false;
-				}
+					is_dense = false;
+ 				}
 			}
 		}
-        cloud->is_dense = is_dense;
+		cloud->is_dense = is_dense;
 		listener_.release(frames_);
 		return cloud;
 	}
@@ -249,5 +239,6 @@ private:
 	Eigen::Matrix<float,512,1> colmap;
 	Eigen::Matrix<float,424,1> rowmap;
 	std::string serial_;
+	int map_[512 * 424]; // will be used in the next libfreenect2 update
 	float qnan_;   
 };

@@ -1,10 +1,5 @@
 /*
 Copyright 2015, Giacomo Dabisias"
-
-
-Dual licensed with permission under GPLv3 or later and the 2 clause simplified BSD.
-https://github.com/giacomodabisias/libfreenect2pclgrabber/issues/10
-
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -16,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @Author 
-Giacomo. Dabisias, PhD Student
+Giacomo  Dabisias, PhD Student
 PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
@@ -104,10 +99,10 @@ int main(int argc, char *argv[])
     using namespace std::chrono;
     static high_resolution_clock::time_point last;
 
-    auto tnow = high_resolution_clock::now();   
+    std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();   
     cloud = k2g.updateCloud(cloud);
-    auto tpost = high_resolution_clock::now();
-    std::cout << "delta " << duration_cast<duration<double>>(tpost-tnow).count()*1000 << std::endl;
+    std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
+    std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
     viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
     ne.setInputCloud(cloud);
