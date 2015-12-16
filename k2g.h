@@ -65,10 +65,12 @@ public:
 				std::cout << "creating CPU processor" << std::endl;
 				pipeline_ = new libfreenect2::CpuPacketPipeline();
 				break;
+#ifdef HAVE_OPENCL
 			case OPENCL:
 				std::cout << "creating OpenCL processor" << std::endl;
 				pipeline_ = new libfreenect2::OpenCLPacketPipeline();
 				break;
+#endif
 			case OPENGL:
 				std::cout << "creating OpenGL processor" << std::endl;
 				pipeline_ = new libfreenect2::OpenGLPacketPipeline();
