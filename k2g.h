@@ -48,7 +48,8 @@ class K2G {
 
 public:
 
-	K2G(processor p, bool mirror = 1): mirror_(mirror), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth), undistorted_(512, 424, 4), registered_(512, 424, 4),big_mat_(1920, 1082, 4),qnan_(std::numeric_limits<float>::quiet_NaN()){
+	K2G(processor p, bool mirror = false): mirror_(mirror), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth), 
+	                                       undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), qnan_(std::numeric_limits<float>::quiet_NaN()){
 
 		signal(SIGINT,sigint_handler);
 
@@ -107,7 +108,6 @@ public:
         
 		return updateCloud(cloud);
 	}
-    
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
 		
@@ -115,7 +115,7 @@ public:
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 
-		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_);
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
 		const std::size_t w = undistorted_.width;
 		const std::size_t h = undistorted_.height;
 
@@ -238,7 +238,6 @@ private:
 	    }
 	}
 
-    bool mirror_;
 	libfreenect2::Freenect2 freenect2_;
 	libfreenect2::Freenect2Device * dev_ = 0;
 	libfreenect2::PacketPipeline * pipeline_ = 0;
@@ -249,6 +248,7 @@ private:
 	Eigen::Matrix<float,512,1> colmap;
 	Eigen::Matrix<float,424,1> rowmap;
 	std::string serial_;
-	int map_[512 * 424]; // will be used in the next libfreenect2 update
-	float qnan_;   
+	int map_[512 * 424]; 
+	float qnan_; 
+	bool mirror_;  
 };

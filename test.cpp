@@ -24,41 +24,50 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/console/print.h>
 #include <pcl/console/parse.h>
 #include <pcl/console/time.h>
-#include <pcl/conversions.h>
 #include <pcl/io/ply_io.h>
-#include <pcl/PCLPointCloud2.h>
-#include <pcl/features/integral_image_normal.h>
 
-using namespace pcl;
-using namespace pcl::io;
-using namespace pcl::console;
 
-template<typename Cloud>
+struct PlySaver{
+
+  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera): 
+           cloud_(cloud), binary_(binary), use_camera_(use_camera){}
+
+  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
+  bool binary_;
+  bool use_camera_;
+
+};
+
+
 void
-saveCloud (const std::string &filename, const Cloud &cloud, bool binary, bool use_camera)
+KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
 {
-  TicToc tt;
-  tt.tic ();
-
-  print_highlight ("Saving "); print_value ("%s ", filename.c_str ());
-  
-  pcl::PLYWriter writer;
-  writer.write (filename, cloud, Eigen::Vector4f::Zero (), Eigen::Quaternionf::Identity (), binary, use_camera);
-  
-  print_info ("[done, "); print_value ("%g", tt.toc ()); print_info (" ms : "); print_value ("%d", cloud.width * cloud.height); print_info (" points]\n");
+  std::string pressed;
+  pressed = event.getKeySym();
+  PlySaver * s = (PlySaver*)data;
+  if(event.keyDown ())
+  {
+    if(pressed == "s")
+    {
+      
+      pcl::PLYWriter writer;
+      std::chrono::high_resolution_clock::time_point p = std::chrono::high_resolution_clock::now();
+      std::string now = std::to_string((long)std::chrono::duration_cast<std::chrono::milliseconds>(p.time_since_epoch()).count());
+      writer.write ("cloud_" + now, *(s->cloud_), s->binary_, s->use_camera_);
+      
+      std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
+    }
+  }
 }
 
 int main(int argc, char *argv[])
 {
-  std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] [output.ply]\n -processor options 0,1,2 correspond to CPU, OPENCL, and OPENGL respectively\n";
+  std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2 correspond to CPU, OPENCL, and OPENGL respectively\n";
   processor freenectprocessor = OPENGL;
   std::vector<int> ply_file_indices;
-  if(argc>1){
-      int fnpInt;
-      ply_file_indices = parse_file_extension_argument (argc, argv, ".ply");
-      parse_argument (argc, argv, "-processor", fnpInt);
-      freenectprocessor = static_cast<processor>(fnpInt);
-      
+
+  if(argc > 1){
+      freenectprocessor = static_cast<processor>(atoi(argv[1]));
   }
     
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
@@ -70,55 +79,29 @@ int main(int argc, char *argv[])
   cloud->sensor_orientation_.x() = 1.0;
   cloud->sensor_orientation_.y() = 0.0;
   cloud->sensor_orientation_.z() = 0.0;
-  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
   viewer->setBackgroundColor (0, 0, 0);
   pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-  viewer->addPointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-	  
-  // estimate normals http://pointclouds.org/documentation/tutorials/normal_estimation_using_integral_images.php#normal-estimation-using-integral-images
-  pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>());
-  normals->sensor_orientation_.w() = 0.0;
-  normals->sensor_orientation_.x() = 1.0;
-  normals->sensor_orientation_.y() = 0.0;
-  normals->sensor_orientation_.z() = 0.0;
-  pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_2(new pcl::PointCloud<pcl::PointXYZRGBNormal>());
-  cloud_2->sensor_orientation_.w() = 0.0;
-  cloud_2->sensor_orientation_.x() = 1.0;
-  cloud_2->sensor_orientation_.y() = 0.0;
-  cloud_2->sensor_orientation_.z() = 0.0;
-  pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
-  ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
-  /// @todo make magic numbers into params
-  ne.setMaxDepthChangeFactor(1.0f);
-  ne.setNormalSmoothingSize(10.0f);
+  viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "sample cloud");
+  viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+
+  PlySaver ps(cloud, false, false);
+  viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);
 
   bool done = false;
-  while ((!viewer->wasStopped()) && (!done)) {
-    viewer->spinOnce ();
-    using namespace std::chrono;
-    static high_resolution_clock::time_point last;
+  while((!viewer->wasStopped()) && (!done)){
 
-    std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();   
+    viewer->spinOnce ();
+    std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
+
     cloud = k2g.updateCloud(cloud);
+
     std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
     std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-    viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");
-    ne.setInputCloud(cloud);
-    ne.compute(*normals);
-    
-    pcl::concatenateFields (*cloud, *normals, *cloud_2);
-    	
-    viewer->addPointCloudNormals<pcl::PointXYZRGB,pcl::Normal>(cloud, normals);
+    viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");    	
 
-    
-    if(ply_file_indices.size() > 0 ){
-        pcl::PCLPointCloud2 cloud2;
-        pcl::toPCLPointCloud2(*cloud_2,cloud2);
-        saveCloud(std::string(argv[ply_file_indices[0]]),cloud2,false,false);
-        done = true;
-    }
   }
 
   k2g.shutDown();
