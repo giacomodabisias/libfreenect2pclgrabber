@@ -183,7 +183,10 @@ public:
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		cv::Mat tmp(rgb->height, rgb->width, CV_8UC4, rgb->data);
-		cv::Mat r = tmp.clone();
+		cv::Mat r;
+        if (mirror_ == true) {cv::flip(tmp,r,1);}
+        else {r = tmp.clone();}
+        
 		listener_.release(frames_);
 		return std::move(r);
 	}
@@ -192,7 +195,10 @@ public:
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 		cv::Mat tmp(depth->height, depth->width, CV_8UC4, depth->data);
-		cv::Mat r = tmp.clone();
+		cv::Mat r;
+        if (mirror_ == true) {cv::flip(tmp,r,1);}
+        else {r = tmp.clone();}
+
 		listener_.release(frames_);
 		return std::move(r);
 	}
@@ -206,6 +212,10 @@ public:
 		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
 		cv::Mat r = tmp_color.clone();
 		cv::Mat d = tmp_depth.clone();
+        if (mirror_ == true) {
+            cv::flip(tmp_depth,d,1);
+            cv::flip(tmp_color,r,1);
+        }
 		listener_.release(frames_);
 		return std::move(std::pair<cv::Mat, cv::Mat>(r,d));
 	}
