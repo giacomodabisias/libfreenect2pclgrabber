@@ -26,6 +26,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 set(CMAKE_BUILD_TYPE Release) 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
 
+option(WITH_OPENCL "adds opencl support for freenect2" OFF)
+
 find_package(OpenCV REQUIRED)
 find_package(PCL 1.7 REQUIRED)
 find_package(Freenect2 REQUIRED)
