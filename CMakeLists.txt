@@ -40,4 +40,3 @@ include_directories(${FREENECT2_INCLUDE_DIRS})
 add_executable(Kinect2Grabber test.cpp)
 
 target_link_libraries(Kinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES})
-
