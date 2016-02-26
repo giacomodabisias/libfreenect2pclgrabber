@@ -48,7 +48,7 @@ class K2G {
 
 public:
 
-	K2G(processor p, bool mirror = false): mirror_(mirror), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth), 
+	K2G(processor p = CPU, bool mirror = false, std::string serial = std::string()): mirror_(mirror), listener_(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth), 
 	                                       undistorted_(512, 424, 4), registered_(512, 424, 4), big_mat_(1920, 1082, 4), qnan_(std::numeric_limits<float>::quiet_NaN()){
 
 		signal(SIGINT,sigint_handler);
@@ -59,29 +59,46 @@ public:
 			exit(-1);
 		}
 
-		serial_ = freenect2_.getDefaultDeviceSerialNumber();
-		switch(p){
+		switch (p)
+		{
 			case CPU:
 				std::cout << "creating CPU processor" << std::endl;
-				pipeline_ = new libfreenect2::CpuPacketPipeline();
+				if (serial.empty())
+					dev_ = freenect2_.openDefaultDevice (new libfreenect2::CpuPacketPipeline ());
+				else
+					dev_ = freenect2_.openDevice (serial, new libfreenect2::CpuPacketPipeline ());
+				std::cout << "created" << std::endl;
 				break;
 #ifdef HAVE_OPENCL
 			case OPENCL:
 				std::cout << "creating OpenCL processor" << std::endl;
-				pipeline_ = new libfreenect2::OpenCLPacketPipeline();
+				if(serial.empty())
+					dev_ = freenect2_.openDefaultDevice(new libfreenect2::OpenCLPacketPipeline());
+				else
+					dev_ = freenect2_.openDevice(serial, new libfreenect2::OpenCLPacketPipeline());
 				break;
 #endif
 			case OPENGL:
 				std::cout << "creating OpenGL processor" << std::endl;
-				pipeline_ = new libfreenect2::OpenGLPacketPipeline();
+				if (serial.empty())
+					dev_ = freenect2_.openDefaultDevice (new libfreenect2::OpenGLPacketPipeline ());
+				else
+					dev_ = freenect2_.openDevice (serial, new libfreenect2::OpenGLPacketPipeline ());
 				break;
 			default:
 				std::cout << "creating CPU processor" << std::endl;
-				pipeline_ = new libfreenect2::CpuPacketPipeline();
+				if (serial_.empty())
+					dev_ = freenect2_.openDefaultDevice (new libfreenect2::CpuPacketPipeline ());
+				else
+					dev_ = freenect2_.openDevice (serial, new libfreenect2::CpuPacketPipeline ());
 				break;
 		}
+
+		if(serial.empty())
+			serial_ = serial;
+		else
+			serial_ = freenect2_.getDefaultDeviceSerialNumber();
 		
-		dev_ = freenect2_.openDevice(serial_, pipeline_);
 		dev_->setColorFrameListener(&listener_);
 		dev_->setIrAndDepthFrameListener(&listener_);
 		dev_->start();
