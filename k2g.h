@@ -36,7 +36,7 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 bool stop = false;
 
 enum processor{
-	CPU, OPENCL, OPENGL
+	CPU, OPENCL, OPENGL, CUDA
 };
 
 void sigint_handler(int s)
@@ -62,14 +62,14 @@ public:
 		switch (p)
 		{
 			case CPU:
-				std::cout << "creating CPU processor" << std::endl;
+				std::cout << "creating Cpu processor" << std::endl;
 				if (serial.empty())
 					dev_ = freenect2_.openDefaultDevice (new libfreenect2::CpuPacketPipeline ());
 				else
 					dev_ = freenect2_.openDevice (serial, new libfreenect2::CpuPacketPipeline ());
 				std::cout << "created" << std::endl;
 				break;
-#ifdef HAVE_OPENCL
+#ifdef WITH_OPENCL
 			case OPENCL:
 				std::cout << "creating OpenCL processor" << std::endl;
 				if(serial.empty())
@@ -85,8 +85,17 @@ public:
 				else
 					dev_ = freenect2_.openDevice (serial, new libfreenect2::OpenGLPacketPipeline ());
 				break;
+#ifdef WITH_CUDA
+			case CUDA:
+				std::cout << "creating Cuda processor" << std::endl;
+				if(serial.empty())
+					dev_ = freenect2_.openDefaultDevice(new libfreenect2::CudaPacketPipeline());
+				else
+					dev_ = freenect2_.openDevice(serial, new libfreenect2::CudaPacketPipeline());
+				break;
+#endif
 			default:
-				std::cout << "creating CPU processor" << std::endl;
+				std::cout << "creating Cpu processor" << std::endl;
 				if (serial_.empty())
 					dev_ = freenect2_.openDefaultDevice (new libfreenect2::CpuPacketPipeline ());
 				else
