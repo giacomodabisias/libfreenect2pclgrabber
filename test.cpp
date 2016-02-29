@@ -62,7 +62,7 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 
 int main(int argc, char *argv[])
 {
-  std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2 correspond to CPU, OPENCL, and OPENGL respectively\n";
+  std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2,3 correspond to CPU, OPENCL, OPENGL, CUDA respectively\n";
   processor freenectprocessor = OPENGL;
   std::vector<int> ply_file_indices;
 
