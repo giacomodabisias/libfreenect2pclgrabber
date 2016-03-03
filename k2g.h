@@ -127,6 +127,17 @@ public:
 		return rgb;
 	}
 
+	void printParameters(){
+		libfreenect2::Freenect2Device::ColorCameraParams cp = getRgbParameters();
+		std::cout << " rgb fx=" << cp.fx << ",fy=" << cp.fy <<
+			",cx=" << cp.cx << ",cy=" << cp.cy << std::endl;
+		libfreenect2::Freenect2Device::IrCameraParams ip = getIrParameters();
+		std::cout << "ir fx=" << ip.fx << ",fy=" << ip.fy <<
+			",cx=" << ip.cx << ",cy=" << ip.cy <<
+			",k1=" << ip.k1 << ",k2=" << ip.k2 << ",k3=" << ip.k3 <<
+			",p1=" << ip.p1 << ",p2=" << ip.p2 << std::endl;
+	}
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;

@@ -75,6 +75,8 @@ int main(int argc, char *argv[])
   std::cout << "getting cloud" << std::endl;
   cloud = k2g.getCloud();
 
+  k2g.printParameters();
+
   cloud->sensor_orientation_.w() = 0.0;
   cloud->sensor_orientation_.x() = 1.0;
   cloud->sensor_orientation_.y() = 0.0;
