@@ -29,10 +29,13 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 
 struct PlySaver{
 
-  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera): 
-           cloud_(cloud), binary_(binary), use_camera_(use_camera){}
+  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_1, boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_2, bool binary, bool use_camera, K2G & k2g_1, K2G & k2g_2): 
+           cloud_1_(cloud_1), cloud_2_(cloud_2), binary_(binary), use_camera_(use_camera), k2g_1_(k2g_1), k2g_2_(k2g_2){}
 
-  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
+  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_1_;
+  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_2_;
+  K2G & k2g_1_;
+  K2G & k2g_2_;
   bool binary_;
   bool use_camera_;
 
@@ -53,9 +56,12 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
       pcl::PLYWriter writer;
       std::chrono::high_resolution_clock::time_point p = std::chrono::high_resolution_clock::now();
       std::string now = std::to_string((long)std::chrono::duration_cast<std::chrono::milliseconds>(p.time_since_epoch()).count());
-      writer.write ("cloud_" + now, *(s->cloud_), s->binary_, s->use_camera_);
+      writer.write ("cloud_1_" + now + ".ply", *(s->cloud_1_), s->binary_, s->use_camera_);
+      writer.write ("cloud_2_" + now + ".ply", *(s->cloud_2_), s->binary_, s->use_camera_);
+      cv::imwrite("color_1_" + now + ".jpg", s->k2g_1_.getColor());
+      cv::imwrite("color_2_" + now + ".jpg", s->k2g_2_.getColor());
       
-      std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
+      std::cout << "saved " << "cloud and color " + now << std::endl;
     }
   }
 }
@@ -73,15 +79,12 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-
-
   freenectprocessor = static_cast<processor>(atoi(argv[1]));
   
-    
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_1;
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_2;
-  K2G k2g_1(freenectprocessor, argc == 5 ? true : false, argv[2]); 
-  K2G k2g_2(freenectprocessor, argc == 5 ? true : false, argv[3]); 
+  K2G k2g_1(freenectprocessor, argc == 5 ? true : false, argv[2]); //"005157353647"
+  K2G k2g_2(freenectprocessor, argc == 5 ? true : false, argv[3]); //"500320441942"
 
   std::cout << "getting cloud" << std::endl;
   cloud_1 = k2g_1.getCloud();
@@ -107,7 +110,7 @@ int main(int argc, char *argv[])
   viewer_1->addPointCloud<pcl::PointXYZRGB>(cloud_2, rgb_2, "sample cloud_2");
   viewer_1->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud_2");
 
-  PlySaver ps_1(cloud_1, false, false);
+  PlySaver ps_1(cloud_1, cloud_2, false, false, k2g_1, k2g_2);
   viewer_1->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps_1);
 
   bool done = false;
