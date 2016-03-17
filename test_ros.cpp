@@ -144,9 +144,10 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 			writer.write ("cloud_" + now, *(s->cloud_), s->binary_, s->use_camera_);
 			std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
 		}
-		if(pressed == "q")
+		if(pressed == "e")
 		{
 			s->K2G_ros_.setShutdown();
+			std::cout << "SHUTTING DOWN" << std::endl;
 		}
 	}
 }
