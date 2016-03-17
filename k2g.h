@@ -238,7 +238,7 @@ public:
 	cv::Mat getDepth(){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
-		cv::Mat tmp(depth->height, depth->width, CV_8UC4, depth->data);
+		cv::Mat tmp(depth->height, depth->width, CV_32FC1, depth->data);
 		cv::Mat r;
         if (mirror_ == true) {cv::flip(tmp,r,1);}
         else {r = tmp.clone();}
@@ -252,7 +252,7 @@ public:
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		registration_->apply(rgb, depth, &undistorted_, &registered_);
-		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_8UC4, undistorted_.data);
+		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
 		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
 		cv::Mat r = tmp_color.clone();
 		cv::Mat d = tmp_depth.clone();

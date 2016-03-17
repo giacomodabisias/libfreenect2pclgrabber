@@ -33,14 +33,17 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <eigen3/Eigen/Eigen>
 #include <iostream>
 #include <ctime>
 #include <time.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/highgui/highgui.hpp>
+#include "opencv2/imgproc/imgproc.hpp"
 
 
+class Kinect2Grab;
 
 struct PlySaver{
 
@@ -54,6 +57,102 @@ struct PlySaver{
 
 };
 
+void createImage(const cv::Mat &image, const std_msgs::Header &header, sensor_msgs::Image &msgImage) 
+{
+	size_t step, size;
+	step = image.cols * image.elemSize();
+	size = image.rows * step;
+	msgImage.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
+
+	msgImage.header = header;
+	msgImage.height = image.rows;
+	msgImage.width = image.cols;
+	msgImage.is_bigendian = false;
+	msgImage.step = step;
+	msgImage.data.resize(size);
+	memcpy(msgImage.data.data(), image.data, size);
+	}
+
+
+class Kinect2Grab 
+{
+
+public:
+
+	Kinect2Grab(processor freenect_processor = CPU): k2g_(freenect_processor), shutdown_(false)
+	{
+		  
+		point_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/kinect2/hd/points", 1);
+		color_pub_ = nh_.advertise<sensor_msgs::Image>("/kinect2/hd/image_color", 1);
+		camera_info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/kinect2/hd/camera_info", 1);
+		depth_pub_ = nh_.advertise<sensor_msgs::Image>("/kinect2/sd/image_depth", 1);
+
+		libfreenect2::Freenect2Device::IrCameraParams ir = k2g_.getIrParameters();
+		libfreenect2::Freenect2Device::ColorCameraParams rgb = k2g_.getRgbParameters();
+
+	}
+
+	void publishAll()
+	{
+		std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
+
+		if(cloud_)
+			cloud_ = k2g_.updateCloud(cloud_);
+		else
+			cloud_ = k2g_.getCloud();
+
+		depth_ = k2g_.getDepth();
+		color_ = k2g_.getColor();
+		std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
+		
+		pcl::toROSMsg( *cloud_, point_cloud_2_);
+		point_cloud_2_.header.frame_id="world";
+		point_cloud_2_.header.stamp = ros::Time::now();
+		
+		sensor_msgs::Image::Ptr color_image_ = cv_bridge::CvImage(head_, "bgra8", color_).toImageMsg();
+		depth_.convertTo(depth_, CV_16U);
+		std_msgs::Header header;
+		header.frame_id = "kinect2_depth";
+		header.stamp = ros::Time::now();
+		sensor_msgs::Image depth_image_;
+
+		createImage(depth_, header, depth_image_);
+
+		color_pub_.publish(color_image_);
+		point_cloud_pub_.publish(point_cloud_2_);
+		depth_pub_.publish(depth_image_);
+	}
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
+		return k2g_.getCloud();
+	}
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
+		return k2g_.updateCloud(cloud);
+	}
+
+	void shutDown(){
+		k2g_.shutDown();
+	}
+
+	bool terminate(){
+		return shutdown_;
+	}
+
+	void setShutdown(){
+		shutdown_ = true;
+	}
+    
+private:
+	ros::NodeHandle nh_;
+	ros::Publisher point_cloud_pub_, color_pub_, camera_info_pub_, depth_pub_;
+    sensor_msgs::PointCloud2 point_cloud_2_;
+    boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
+    cv::Mat color_, depth_;
+    std_msgs::Header head_;
+    K2G k2g_;
+    bool shutdown_;
+};
 
 void
 KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
@@ -72,75 +171,13 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 			writer.write ("cloud_" + now, *(s->cloud_), s->binary_, s->use_camera_);
 			std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
 		}
-		if(pressed == "q")
+		if(pressed == "e")
 		{
-			K2G_ros_.shutDown();
+			s->K2G_ros_.setShutdown();
+			std::cout << "SHUTTING DOWN" << std::endl;
 		}
 	}
 }
-
-
-class Kinect2Grab 
-{
-
-public:
-
-	Kinect2Grab(processor freenect_processor = CPU): k2g_(freenectprocessor), shutdown_(false)
-	{
-		  
-		pointCloudPub_ = nh_.advertise<sensor_msgs::PointCloud2>("/kinect2/hd/points", 1);
-		colorImagePub_ = nh_.advertise<sensor_msgs::Image>("/kinect2/hd/image_color", 1);
-		camera_info_Pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/kinect2/hd/camera_info", 1);
-
-		libfreenect2::Freenect2Device::IrCameraParams ir =  k2g_.getIrParameters();
-		libfreenect2::Freenect2Device::ColorCameraParams = k2g_.getRgbParameters();
-
-	}
-
-	void publishAll()
-	{
-		std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
-
-		if(cloud_)
-			cloud_ = k2g_->updateCloud(cloud_);
-		else
-			cloud_ = k2g_->get(cloud_);
-
-		color_ = k2g_->getColor();
-		std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
-		
-		pcl::toROSMsg( *cloud_, point_cloud_2_);
-		point_cloud_2_.header.frame_id="/base_link";
-		point_cloud_2_.header.stamp = ros::Time::now();
-		
-		sensor_msgs::Image::Ptr color_image_ = cv_bridge::CvImage(head_, "bgra8", color_).toImageMsg();
-
-		colorImagePub_.publish(color_image_);
-		pointCloudPub_.publish(point_cloud_2_);
-	}
-
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
-		return k2g_->getCloud();
-	}
-
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
-		return k2g_->updateCloud();
-	}
-
-	void shutDown(){
-		k2g_.shutDown();
-	}
-    
-private:
-	ros::NodeHandle nh_;
-	ros::Publisher pointCloudPub_, colorImagePub_, camera_info_Pub_;
-    sensor_msgs::PointCloud2 point_cloud_2_;
-    boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
-    cv::Mat color_;
-    std_msgs::Header head_;
-    K2G k2g_;
-    bool shutdown_;
-};
 
 
 int main(int argc, char *argv[])
@@ -148,16 +185,16 @@ int main(int argc, char *argv[])
   
 	ros::init (argc, argv, "RosKinect2Grabber");
 	ros::NodeHandle nh;
-	Kinect2Grab K2G_ros;
+	Kinect2Grab K2G_ros(OPENGL);
 
 	boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
-	cloud = k2g_->getCloud();
+	cloud = K2G_ros.getCloud();
 
 	cloud->sensor_orientation_.w() = 0.0;
 	cloud->sensor_orientation_.x() = 1.0;
 	cloud->sensor_orientation_.y() = 0.0;
 	cloud->sensor_orientation_.z() = 0.0; 
-
+/*
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
 	viewer->setBackgroundColor(0, 0, 0);
 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
@@ -166,14 +203,14 @@ int main(int argc, char *argv[])
 
 	PlySaver ps(cloud, false, false, K2G_ros);
 	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);	
-
-	while((ros::ok()) && (!K2G_ros->terminate()))
+*/
+	while((ros::ok()) && (!K2G_ros.terminate()))
 	{  		
-		viewer_->spinOnce ();
-		cloud = updateCloud(cloud);
+		//viewer->spinOnce ();
+		cloud = K2G_ros.updateCloud(cloud);
 		K2G_ros.publishAll();  
-		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-		viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");     	 
+		//pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+		//viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");     	 
 	}
 
 	K2G_ros.shutDown();
