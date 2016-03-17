@@ -25,6 +25,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 set(CMAKE_BUILD_TYPE Release) 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
+set(INCLUDE "${CMAKE_SOURCE_DIR}/include")
+
 set(BOOST_LIBS "")
 
 option(WITH_OPENCL "adds opencl support for freenect2" OFF)
@@ -40,8 +42,27 @@ endif()
 option(ENABLE_SERIALIZATION "adds support for boost serialization" OFF)
 if(${ENABLE_SERIALIZATION})
 	find_package(Boost REQUIRED)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DENABLE_SERIALIZATION")
+	include_directories(${INCLUDE})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_SERIALIZATION")
 	set(BOOST_LIBS "boost_serialization")
+endif()
+
+option(ENABLE_ROS "adds support for ROS" OFF)
+if(${ENABLE_ROS})
+	find_package(catkin REQUIRED COMPONENTS   roscpp
+											  std_msgs
+											  pcl_conversions
+											  pcl_ros
+											  sensor_msgs
+											  #geometry_msgs
+											  cv_bridge
+											  image_transport
+											  tf
+											  message_generation
+				)
+	include_directories(${catkin_INCLUDE_DIRS})
+	add_executable(RosKinect2Grabber test_ros.cpp)
+	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
 endif()
 
 find_package(OpenCV REQUIRED)
