@@ -150,6 +150,14 @@ int main(int argc, char *argv[])
 	ros::NodeHandle nh;
 	Kinect2Grab K2G_ros;
 
+	boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
+	cloud = k2g_->getCloud();
+
+	cloud->sensor_orientation_.w() = 0.0;
+	cloud->sensor_orientation_.x() = 1.0;
+	cloud->sensor_orientation_.y() = 0.0;
+	cloud->sensor_orientation_.z() = 0.0; 
+
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
 	viewer->setBackgroundColor(0, 0, 0);
 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
@@ -158,13 +166,6 @@ int main(int argc, char *argv[])
 
 	PlySaver ps(cloud, false, false, K2G_ros);
 	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);	
-
-	cloud = k2g_->getCloud();
-
-	cloud->sensor_orientation_.w() = 0.0;
-	cloud->sensor_orientation_.x() = 1.0;
-	cloud->sensor_orientation_.y() = 0.0;
-	cloud->sensor_orientation_.z() = 0.0; 
 
 	while((ros::ok()) && (!K2G_ros->terminate()))
 	{  		
