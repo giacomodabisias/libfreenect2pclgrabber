@@ -31,6 +31,7 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <cstdlib>
 #include <string>
 #include <iostream>
+#include <chrono>
 #include <Eigen/Core>
 #ifdef WITH_SERIALIZATION
 #include "serialization.h"
@@ -122,6 +123,11 @@ public:
 		registration_ = new libfreenect2::Registration(dev_->getIrCameraParams(), dev_->getColorCameraParams());
 
 		prepareMake3D(dev_->getIrCameraParams());
+#ifdef WITH_SERIALIZATION
+		serialize_ = false;
+		file_streamer_ = NULL;
+		oa_ = NULL;
+#endif
  	}
 
 	libfreenect2::Freenect2Device::IrCameraParams getIrParameters(){
@@ -215,6 +221,10 @@ public:
 		}
 		cloud->is_dense = is_dense;
 		listener_.release(frames_);
+#ifdef WITH_SERIALIZATION
+		if(serialize_)
+			serializeCloud(cloud);
+#endif
 		return cloud;
 	}
 
@@ -228,8 +238,11 @@ public:
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		cv::Mat tmp(rgb->height, rgb->width, CV_8UC4, rgb->data);
 		cv::Mat r;
-        if (mirror_ == true) {cv::flip(tmp,r,1);}
-        else {r = tmp.clone();}
+        if (mirror_ == true){
+        	cv::flip(tmp,r,1);
+        }else{
+        	r = tmp.clone();
+        }
         
 		listener_.release(frames_);
 		return std::move(r);
@@ -240,8 +253,11 @@ public:
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 		cv::Mat tmp(depth->height, depth->width, CV_32FC1, depth->data);
 		cv::Mat r;
-        if (mirror_ == true) {cv::flip(tmp,r,1);}
-        else {r = tmp.clone();}
+        if (mirror_ == true) {
+        	cv::flip(tmp,r,1);
+        }else{
+        	r = tmp.clone();
+        }
 
 		listener_.release(frames_);
 		return std::move(r);
@@ -264,7 +280,53 @@ public:
 		return std::move(std::pair<cv::Mat, cv::Mat>(r,d));
 	}
 
+#ifdef WITH_SERIALIZATION
+	void enableSerialization(){
+		serialize_ = true;
+	}
+
+	void disableSerialization(){
+		serialize_ = false;
+	}
+
+	bool serialize_status(){
+		return serialize_;
+	}
+#endif
+
 private:
+
+#ifdef WITH_SERIALIZATION
+	void serializeFrames(const cv::Mat & depth, const cv::Mat & color)
+	{	
+		std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
+		unsigned int now = (unsigned int)std::chrono::duration_cast<std::chrono::milliseconds>(tnow.time_since_epoch()).count();
+		if(!file_streamer_){
+			file_streamer_ = new std::ofstream();
+			file_streamer_->open ("stream" + std::to_string(now), std::ios::binary);
+			oa_ = new boost::archive::binary_oarchive(*file_streamer_);
+		}
+
+		(*oa_) << now << color;
+	}
+
+	void serializeCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
+	{	
+		std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
+		unsigned int now = (unsigned int)std::chrono::duration_cast<std::chrono::milliseconds>(tnow.time_since_epoch()).count();
+		if(!file_streamer_){
+			std::cout << "opening stream" << std::endl;
+			file_streamer_ = new std::ofstream();
+			file_streamer_->open ("stream" + std::to_string(now), std::ios::binary);
+		}
+
+		microser sr(*file_streamer_);
+		sr << now << (uint32_t)cloud->size();
+		for(auto &p : cloud->points){
+			sr << p.x << p.y << p.z << p.r << p.g << p.b;
+		}
+	}
+#endif
 
 	void prepareMake3D(const libfreenect2::Freenect2Device::IrCameraParams & depth_p)
 	{
@@ -294,5 +356,10 @@ private:
 	std::string serial_;
 	int map_[512 * 424]; 
 	float qnan_; 
-	bool mirror_;  
+	bool mirror_;
+#ifdef WITH_SERIALIZATION
+	bool serialize_;
+	std::ofstream * file_streamer_;
+	boost::archive::binary_oarchive * oa_;
+#endif  
 };

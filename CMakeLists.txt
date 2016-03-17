@@ -21,11 +21,11 @@
 cmake_minimum_required(VERSION 2.8)
 Project (Kinect2Grabber CXX)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-set(CMAKE_BUILD_TYPE Release) 
+set(CMAKE_CXX_FLAGS   "${CMAKE_CXX_FLAGS} -std=c++11") 
+set(CMAKE_CXX_FLAGS   "${CMAKE_CXX_FLAGS} -march=native")
+set(CMAKE_BUILD_TYPE  Release) 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
-set(INCLUDE "${CMAKE_SOURCE_DIR}/include")
+set(INCLUDE           "${CMAKE_SOURCE_DIR}/include")
 
 set(BOOST_LIBS "")
 
@@ -39,22 +39,21 @@ if(${WITH_CUDA})
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_CUDA")
 endif()
 
-option(ENABLE_SERIALIZATION "adds support for boost serialization" OFF)
-if(${ENABLE_SERIALIZATION})
+option(WITH_SERIALIZATION "adds support for boost serialization" OFF)
+if(${WITH_SERIALIZATION})
 	find_package(Boost REQUIRED)
 	include_directories(${INCLUDE})
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_SERIALIZATION")
 	set(BOOST_LIBS "boost_serialization")
 endif()
 
-option(ENABLE_ROS "adds support for ROS" OFF)
-if(${ENABLE_ROS})
+option(WITH_ROS "adds support for ROS" OFF)
+if(${WITH_ROS})
 	find_package(catkin REQUIRED COMPONENTS   roscpp
 											  std_msgs
 											  pcl_conversions
 											  pcl_ros
 											  sensor_msgs
-											  #geometry_msgs
 											  cv_bridge
 											  image_transport
 											  tf
@@ -65,9 +64,9 @@ if(${ENABLE_ROS})
 	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
 endif()
 
-find_package(OpenCV REQUIRED)
-find_package(PCL REQUIRED)
-find_package(Freenect2 REQUIRED)
+find_package(OpenCV     REQUIRED)
+find_package(PCL        REQUIRED)
+find_package(Freenect2  REQUIRED)
 
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -76,8 +75,8 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${PCL_INCLUDE_DIRS})
 include_directories(${FREENECT2_INCLUDE_DIRS})
 
-add_executable(Kinect2Grabber test.cpp)
+add_executable(Kinect2Grabber      test.cpp)
 add_executable(MultiKinect2Grabber multi_test.cpp)
 
-target_link_libraries(Kinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
+target_link_libraries(Kinect2Grabber      ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
 target_link_libraries(MultiKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})

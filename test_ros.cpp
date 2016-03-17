@@ -1,6 +1,5 @@
 /*
-Copyright 2015, Giacomo Dabisias"
-Copyright 2016, Michele Mambrini"
+Copyright 2016, Giacomo Dabisias & Michele Mambrini"
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +11,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @Author 
-Giacomo  Dabisias, PhD Student
+Giacomo  Dabisias, PhD Student & Michele Mambrini
 PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
@@ -57,7 +56,7 @@ struct PlySaver{
 
 };
 
-void createImage(const cv::Mat &image, const std_msgs::Header &header, sensor_msgs::Image &msgImage) 
+void createImage(cv::Mat &image, std_msgs::Header &header, sensor_msgs::Image &msgImage) 
 {
 	size_t step, size;
 	step = image.cols * image.elemSize();
@@ -70,8 +69,9 @@ void createImage(const cv::Mat &image, const std_msgs::Header &header, sensor_ms
 	msgImage.is_bigendian = false;
 	msgImage.step = step;
 	msgImage.data.resize(size);
+
 	memcpy(msgImage.data.data(), image.data, size);
-	}
+}
 
 
 class Kinect2Grab 
@@ -81,7 +81,6 @@ public:
 
 	Kinect2Grab(processor freenect_processor = CPU): k2g_(freenect_processor), shutdown_(false)
 	{
-		  
 		point_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/kinect2/hd/points", 1);
 		color_pub_ = nh_.advertise<sensor_msgs::Image>("/kinect2/hd/image_color", 1);
 		camera_info_pub_ = nh_.advertise<sensor_msgs::CameraInfo>("/kinect2/hd/camera_info", 1);
@@ -89,7 +88,6 @@ public:
 
 		libfreenect2::Freenect2Device::IrCameraParams ir = k2g_.getIrParameters();
 		libfreenect2::Freenect2Device::ColorCameraParams rgb = k2g_.getRgbParameters();
-
 	}
 
 	void publishAll()
@@ -182,10 +180,15 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 
 int main(int argc, char *argv[])
 {
-  
+	std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2,3 correspond to CPU, OPENCL, OPENGL, CUDA respectively\n";
+	processor freenectprocessor = OPENGL;
+
+	if(argc > 1){
+		freenectprocessor = static_cast<processor>(atoi(argv[1]));
+	}
 	ros::init (argc, argv, "RosKinect2Grabber");
-	ros::NodeHandle nh;
-	Kinect2Grab K2G_ros(OPENGL);
+
+	Kinect2Grab K2G_ros(freenectprocessor);
 
 	boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 	cloud = K2G_ros.getCloud();

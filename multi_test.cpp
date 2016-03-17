@@ -113,8 +113,7 @@ int main(int argc, char *argv[])
   PlySaver ps_1(cloud_1, cloud_2, false, false, k2g_1, k2g_2);
   viewer_1->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps_1);
 
-  bool done = false;
-  while((!viewer_1->wasStopped()) && (!done)){
+  while(!viewer_1->wasStopped()){
 
     viewer_1->spinOnce ();
 

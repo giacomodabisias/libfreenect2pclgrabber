@@ -25,19 +25,21 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/console/parse.h>
 #include <pcl/console/time.h>
 #include <pcl/io/ply_io.h>
-
+#ifdef WITH_SERIALIZATION
+#include "serialization.h"
+#endif
 
 struct PlySaver{
 
-  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera): 
-           cloud_(cloud), binary_(binary), use_camera_(use_camera){}
+  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera, K2G & k2g): 
+           cloud_(cloud), binary_(binary), use_camera_(use_camera), k2g_(k2g){}
 
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
   bool binary_;
   bool use_camera_;
+  K2G & k2g_;
 
 };
-
 
 void
 KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
@@ -57,6 +59,19 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
       
       std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
     }
+#ifdef WITH_SERIALIZATION
+    if(pressed == "z")
+    {
+      if(!(s->k2g_.serialize_status())){
+        std::cout << "serialization enabled" << std::endl;
+        s->k2g_.enableSerialization();
+      }
+      else{
+        std::cout << "serialization disabled" << std::endl;
+        s->k2g_.disableSerialization();
+      }
+    }
+#endif
   }
 }
 
@@ -88,11 +103,10 @@ int main(int argc, char *argv[])
   viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "sample cloud");
   viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
 
-  PlySaver ps(cloud, false, false);
+  PlySaver ps(cloud, false, false, k2g);
   viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);
 
-  bool done = false;
-  while((!viewer->wasStopped()) && (!done)){
+  while(!viewer->wasStopped()){
 
     viewer->spinOnce ();
     std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();

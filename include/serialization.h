@@ -4,6 +4,7 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <fstream>
 
 
 struct microser
@@ -24,21 +25,18 @@ inline microser & operator << (microser & x, const float & y)
 {
 	x.ons_.write((const char*)&y,4);
 	return x;
-	
 }
 
 inline microser & operator << (microser & x, const uint8_t &y)
 {
 	x.ons_.write((const char*)&y,1);
-	return x;
-	
+	return x;	
 }
  
 inline microser & operator << (microser & x, const double & y)
 {
 	x.ons_.write((const char*)&y,8);
-	return x;
-	
+	return x;	
 }
 
 inline microser & operator << (microser & x, const uint64_t & y)
@@ -84,5 +82,6 @@ namespace serialization {
 		size_t data_size = m.cols * m.rows * elem_size;
 		ar & boost::serialization::make_array(m.ptr(), data_size);
     }
+}
 }
 
