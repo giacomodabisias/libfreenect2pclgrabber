@@ -47,22 +47,22 @@ if(${WITH_SERIALIZATION})
 	set(BOOST_LIBS "boost_serialization")
 endif()
 
-option(WITH_ROS "adds support for ROS" OFF)
-if(${WITH_ROS})
-	find_package(catkin REQUIRED COMPONENTS   roscpp
-											  std_msgs
-											  pcl_conversions
-											  pcl_ros
-											  sensor_msgs
-											  cv_bridge
-											  image_transport
-											  tf
-											  message_generation
-				)
-	include_directories(${catkin_INCLUDE_DIRS})
-	add_executable(RosKinect2Grabber test_ros.cpp)
-	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
-endif()
+#option(WITH_ROS "adds support for ROS" OFF)
+#if(${WITH_ROS})
+#find_package(catkin REQUIRED COMPONENTS   roscpp
+#										  std_msgs
+#										  pcl_conversions
+#										  pcl_ros
+#											  sensor_msgs
+#											  cv_bridge
+#											  image_transport
+#											  tf
+#											  message_generation
+#				)
+#	include_directories(${catkin_INCLUDE_DIRS})
+#	add_executable(RosKinect2Grabber test_ros.cpp)
+#	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
+#endif()
 
 find_package(OpenCV     REQUIRED)
 find_package(PCL        REQUIRED)
