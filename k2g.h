@@ -151,6 +151,23 @@ public:
 			",p1=" << ip.p1 << ",p2=" << ip.p2 << std::endl;
 	}
 
+	void storeParameters(){
+		libfreenect2::Freenect2Device::ColorCameraParams cp = getRgbParameters();
+		libfreenect2::Freenect2Device::IrCameraParams ip = getIrParameters();
+
+		cv::Mat rgb = (cv::Mat_<float>(3,3) << cp.fx, 0, cp.cx, 0, cp.fy, cp.cy, 0, 0, 1);
+		cv::Mat depth = (cv::Mat_<float>(3,3) << ip.fx, 0, ip.cx, 0, ip.fy, ip.cy, 0, 0, 1);
+		cv::Mat depth_dist = (cv::Mat_<float>(1,5) << ip.k1, ip.k2, ip.p1, ip.p2, ip.k3);
+		
+		cv::FileStorage fs("calib_" + serial_ + ".yml", cv::FileStorage::WRITE);
+	   
+	    fs << "CcameraMatrix" << rgb;
+	    fs << "DcameraMatrix" << depth << "distCoeffs" << depth_dist;
+
+	    fs.release();
+		
+	}
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;

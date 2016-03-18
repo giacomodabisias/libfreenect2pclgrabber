@@ -26,23 +26,13 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/console/time.h>
 #include <pcl/io/ply_io.h>
 
-static int n_ = -1;
-
-struct Counter{
-	Counter()
-	{
-		n_++;
-	}
-	static void reset(){n_ = -1;}
-};
-
 struct PlySaver{
 
-  PlySaver(std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> & clouds, bool binary, bool use_camera, std::vector<K2G> & kinects): 
+  PlySaver(std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> & clouds, bool binary, bool use_camera, std::vector<K2G *> & kinects): 
            binary_(binary), use_camera_(use_camera), clouds_(clouds), kinects_(kinects){}
 
   std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> & clouds_;
-  std::vector<K2G> & kinects_;
+  std::vector<K2G *> & kinects_;
   bool binary_;
   bool use_camera_;
 };
@@ -64,14 +54,14 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
       std::string now = std::to_string((long)std::chrono::duration_cast<std::chrono::milliseconds>(p.time_since_epoch()).count());
       for(size_t i = 0; i < s->kinects_.size(); ++i){
       	writer.write ("cloud_"+ std::to_string(i) + "_" + now + ".ply", *(s->clouds_[i]), s->binary_, s->use_camera_);
-      	cv::imwrite("color_" + std::to_string(i) + "_" + now + ".jpg", s->kinects_[i].getColor());
+      	cv::imwrite("color_" + std::to_string(i) + "_" + now + ".jpg", s->kinects_[i]->getColor());
       }
       std::cout << "saved " << "cloud and color " + now << std::endl;
     }
     if(pressed == "x")
     {
         for(auto & k : s->kinects_)
-        	k.storeParameters();
+        	k->storeParameters();
         std::cout << "stored calibration parameters" << std::endl;
     }
   }
@@ -99,19 +89,18 @@ int main(int argc, char *argv[])
 
   int kinect2_count = mirroring ? argc - 3 : argc - 2;
   std::cout << "loading " << kinect2_count << " devices" << std::endl;
-  std::cout << n_ << std::endl;
-  std::vector<K2G> kinects(kinect2_count, (Counter(), K2G(freenectprocessor, mirroring, argv[n_ + 2])));
-  Counter::reset();
-  std::cout << "reset to " << n_ << std::endl;
-  std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> clouds(kinect2_count, (Counter(), kinects[ n_].getCloud()));
-  std::cout << n_ << std::endl;
 
+  std::vector<K2G *> kinects(kinect2_count);
+  std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> clouds(kinect2_count);
 
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D viewer"));
   viewer->setBackgroundColor (0, 0, 0);
 
   for(size_t i = 0; i < kinect2_count; ++i)
   {
+  	kinects[i] = new K2G(freenectprocessor, mirroring, argv[i + 2]);
+  	clouds[i] = kinects[i]->getCloud();
+
   	clouds[i]->sensor_orientation_.w() = 0.0;
   	clouds[i]->sensor_orientation_.x() = 1.0;
   	clouds[i]->sensor_orientation_.y() = 0.0;
@@ -131,7 +120,7 @@ int main(int argc, char *argv[])
     std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
 
     for(size_t i = 0; i < kinect2_count; ++i)
-    	clouds[i] = kinects[i].updateCloud(clouds[i]);
+    	clouds[i] = kinects[i]->updateCloud(clouds[i]);
 
     std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
     std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;
@@ -141,7 +130,7 @@ int main(int argc, char *argv[])
   }
 
   for(auto & k : kinects)
-  	k.shutDown();
+  	k->shutDown();
 
   return 0;
 }

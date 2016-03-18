@@ -72,12 +72,22 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
       }
     }
 #endif
+    if(pressed == "x")
+    {
+        s->k2g_.storeParameters();
+        std::cout << "stored calibration parameters" << std::endl;
+    }
   }
 }
 
 int main(int argc, char *argv[])
 {
   std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2,3 correspond to CPU, OPENCL, OPENGL, CUDA respectively\n";
+  std::cout << "Press \'s\' to store a cloud" << std::endl;
+  std::cout << "Press \'x\' to store the calibrations." << std::endl;
+#ifdef WITH_SERIALIZATION
+  std::cout << "Press \'z\' to start/stop serialization." << std::endl;
+#endif
   processor freenectprocessor = OPENGL;
   std::vector<int> ply_file_indices;
 
