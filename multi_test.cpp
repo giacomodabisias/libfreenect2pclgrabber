@@ -26,6 +26,18 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/console/time.h>
 #include <pcl/io/ply_io.h>
 
+struct K2G_generator{
+public:
+	K2G_generator(Processor freenectprocessor, bool mirroring, char ** argv): freenectprocessor_(freenectprocessor), mirroring_(mirroring), argv_(argv),n_(0){}
+    //K2G && operator ()(){return std::move(K2G(freenectprocessor_, mirroring_, argv_[n_++ + 2]));}
+    K2G * operator ()(){return new K2G(freenectprocessor_, mirroring_, argv_[n_++ + 2]);}
+private:
+	unsigned int n_;
+	Processor freenectprocessor_;
+	bool mirroring_;
+	char ** argv_;
+};
+
 struct PlySaver{
 
   PlySaver(std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> & clouds, bool binary, bool use_camera, std::vector<K2G *> & kinects): 
@@ -74,31 +86,38 @@ int main(int argc, char *argv[])
   std::cout << "Press \'s\' to store both clouds and color images." << std::endl;
   std::cout << "Press \'x\' to store both calibrations." << std::endl;
 
-  processor freenectprocessor = OPENGL;
-  std::vector<int> ply_file_indices;
   if(argc < 3){
     std::cout << "Wrong syntax! specify at least processor and one serial" << std::endl;
     return -1;
   }
 
-  freenectprocessor = static_cast<processor>(atoi(argv[1]));
-  bool mirroring = atoi(argv[argc-1]) == 1 ? true : false;
 
+  // Set te processor to input value or to default OPENGL
+  Processor freenectprocessor = OPENGL;
+  freenectprocessor = static_cast<Processor>(atoi(argv[1]));
+
+  // check if mirroring is enabled
+  bool mirroring = atoi(argv[argc - 1]) == 1 ? true : false;
   if(mirroring)
   	std::cout << "mirroring enabled" << std::endl;
 
+  // Count number of input serials which represent the number of active kinects
   int kinect2_count = mirroring ? argc - 3 : argc - 2;
   std::cout << "loading " << kinect2_count << " devices" << std::endl;
 
+  // Initialize container structures
   std::vector<K2G *> kinects(kinect2_count);
   std::vector<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> clouds(kinect2_count);
-
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D viewer"));
   viewer->setBackgroundColor (0, 0, 0);
 
+  // Generate all the kinect grabbers
+  K2G_generator kinect_generator(freenectprocessor, mirroring, argv);
+  std::generate(kinects.begin(), kinects.end(), kinect_generator);
+
+  // Initialize clouds and viewer viewpoints
   for(size_t i = 0; i < kinect2_count; ++i)
   {
-  	kinects[i] = new K2G(freenectprocessor, mirroring, argv[i + 2]);
   	clouds[i] = kinects[i]->getCloud();
 
   	clouds[i]->sensor_orientation_.w() = 0.0;
@@ -110,25 +129,31 @@ int main(int argc, char *argv[])
   	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud_" + i);
   }
 
+  // Add keyboards callbacks
   PlySaver ps(clouds, false, false, kinects);
   viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);
   std::cout << "starting cycle" << std::endl;
+
+  std::chrono::high_resolution_clock::time_point tnow, tpost;
+
+  // Start visualization cycle
   while(!viewer->wasStopped()){
 
     viewer->spinOnce ();
 
-    std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
+    tnow = std::chrono::high_resolution_clock::now();
 
     for(size_t i = 0; i < kinect2_count; ++i)
     	clouds[i] = kinects[i]->updateCloud(clouds[i]);
 
-    std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
-    std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;
+    tpost = std::chrono::high_resolution_clock::now();
+    std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<float>>(tpost - tnow).count() * 1000 << std::endl;
 
     for(size_t i = 0; i < kinect2_count; ++i)
     	viewer->updatePointCloud<pcl::PointXYZRGB> (clouds[i], pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> (clouds[i]), "sample cloud_" + i);
   }
 
+  // Close all kinect grabbers
   for(auto & k : kinects)
   	k->shutDown();
 

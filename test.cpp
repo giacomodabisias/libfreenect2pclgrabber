@@ -88,11 +88,11 @@ int main(int argc, char *argv[])
 #ifdef WITH_SERIALIZATION
   std::cout << "Press \'z\' to start/stop serialization." << std::endl;
 #endif
-  processor freenectprocessor = OPENGL;
+  Processor freenectprocessor = OPENGL;
   std::vector<int> ply_file_indices;
 
   if(argc > 1){
-      freenectprocessor = static_cast<processor>(atoi(argv[1]));
+      freenectprocessor = static_cast<Processor>(atoi(argv[1]));
   }
     
   boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
