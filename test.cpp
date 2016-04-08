@@ -116,13 +116,20 @@ int main(int argc, char *argv[])
   PlySaver ps(cloud, false, false, k2g);
   viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);
 
+  std::tuple<cv::Mat, cv::Mat, boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> cdc;
+
   while(!viewer->wasStopped()){
 
     viewer->spinOnce ();
     std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
 
     cloud = k2g.updateCloud(cloud);
-
+    //cdc = k2g.getAllUnregistered();
+    //cloud = std::get<2>(cdc);
+    // Showing only color since depth is float and needs conversion
+    //cv::imshow("color", std::get<1>(cdc));
+    //int c = cv::waitKey(10);
+    
     std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
     std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);

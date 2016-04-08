@@ -176,6 +176,14 @@ public:
 		return updateCloud(cloud);
 	}
 
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth){
+		const short w = undistorted_.width;
+		const short h = undistorted_.height;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>(w, h));
+        
+		return updateCloud(rgb, depth, cloud);
+	}
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
 		
 		listener_.waitForNewFrame(frames_);
@@ -245,6 +253,70 @@ public:
 		return cloud;
 	}
 
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
+		
+		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
+		const std::size_t w = undistorted_.width;
+		const std::size_t h = undistorted_.height;
+
+        cv::Mat tmp_itD0(undistorted_.height, undistorted_.width, CV_8UC4, undistorted_.data);
+        cv::Mat tmp_itRGB0(registered_.height, registered_.width, CV_8UC4, registered_.data);
+        
+        if (mirror_ == true){
+
+            cv::flip(tmp_itD0,tmp_itD0,1);
+            cv::flip(tmp_itRGB0,tmp_itRGB0,1);
+
+        }
+
+        const float * itD0 = (float *) tmp_itD0.ptr();
+        const char * itRGB0 = (char *) tmp_itRGB0.ptr();
+        
+		pcl::PointXYZRGB * itP = &cloud->points[0];
+        bool is_dense = true;
+		
+		for(std::size_t y = 0; y < h; ++y){
+
+			const unsigned int offset = y * w;
+			const float * itD = itD0 + offset;
+			const char * itRGB = itRGB0 + offset * 4;
+			const float dy = rowmap(y);
+
+			for(std::size_t x = 0; x < w; ++x, ++itP, ++itD, itRGB += 4 )
+			{
+				const float depth_value = *itD / 1000.0f;
+				
+				if(!std::isnan(depth_value) && !(std::abs(depth_value) < 0.0001)){
+	
+					const float rx = colmap(x) * depth_value;
+                	const float ry = dy * depth_value;               
+					itP->z = depth_value;
+					itP->x = rx;
+					itP->y = ry;
+
+					itP->b = itRGB[0];
+					itP->g = itRGB[1];
+					itP->r = itRGB[2];
+				} else {
+					itP->z = qnan_;
+					itP->x = qnan_;
+					itP->y = qnan_;
+
+					itP->b = qnan_;
+					itP->g = qnan_;
+					itP->r = qnan_;
+					is_dense = false;
+ 				}
+			}
+		}
+		cloud->is_dense = is_dense;
+#ifdef WITH_SERIALIZATION
+		if(serialize_)
+			serializeCloud(cloud);
+#endif
+		return cloud;
+	}
+
 	void shutDown(){
 		dev_->stop();
   		dev_->close();
@@ -262,7 +334,7 @@ public:
         }
         
 		listener_.release(frames_);
-		return std::move(r);
+		return r;
 	}
 
 	cv::Mat getDepth(){
@@ -277,24 +349,64 @@ public:
         }
 
 		listener_.release(frames_);
-		return std::move(r);
+		return r;
 	}
 
 	std::pair<cv::Mat, cv::Mat> getDepthRgb(){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		registration_->apply(rgb, depth, &undistorted_, &registered_, false);
+		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
+		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
+		cv::Mat r = tmp_color.clone();
+		cv::Mat d = tmp_depth.clone();
+		if (mirror_ == true) {
+			cv::flip(tmp_depth, d, 1);
+			cv::flip(tmp_color, r, 1);
+		}
+		listener_.release(frames_);
+		return std::pair<cv::Mat, cv::Mat>(d,r);
+	}
+
+	std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> getAllUnregistered(){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+		registration_->apply(rgb, depth, &undistorted_, &registered_);
+		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
+		cv::Mat tmp_color(rgb->height, rgb->width, CV_8UC4, rgb->data);
+		cv::Mat r = tmp_color.clone();
+		cv::Mat d = tmp_depth.clone();
+
+		if (mirror_ == true) {
+			cv::flip(d, d, 1);
+			cv::flip(r, r, 1);
+		}
+
+		boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> c = getCloud(rgb, depth);
+		listener_.release(frames_);
+		return std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>(d, r, c);
+	}
+
+	std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> getAllRegistered(){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
 		registration_->apply(rgb, depth, &undistorted_, &registered_);
 		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
 		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
 		cv::Mat r = tmp_color.clone();
 		cv::Mat d = tmp_depth.clone();
-        if (mirror_ == true) {
-            cv::flip(tmp_depth,d,1);
-            cv::flip(tmp_color,r,1);
-        }
+
+		if (mirror_ == true) {
+			cv::flip(d, d, 1);
+			cv::flip(r, r, 1);
+		}
+
+		boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> c = getCloud(rgb, depth);
 		listener_.release(frames_);
-		return std::move(std::pair<cv::Mat, cv::Mat>(r,d));
+		return std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>(d, r, c);
 	}
 
 #ifdef WITH_SERIALIZATION
