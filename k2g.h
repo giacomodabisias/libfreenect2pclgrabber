@@ -176,15 +176,15 @@ public:
 		return updateCloud(cloud);
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth){
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud){
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>(w, h));
-        
-		return updateCloud(rgb, depth, cloud);
+		if(cloud->size() != w * h)  
+			cloud->resize(w * h);      
+		updateCloud(rgb, depth, cloud);
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud){
 		
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
@@ -253,7 +253,7 @@ public:
 		return cloud;
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud){
 		
 		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
 		const std::size_t w = undistorted_.width;
@@ -322,91 +322,91 @@ public:
   		dev_->close();
 	}
 
-	cv::Mat getColor(){
+	// Use only if you want only color, else use get(cv::Mat, cv::Mat) to have the images aligned
+	void getDepth(cv::Mat depth_mat){
 		listener_.waitForNewFrame(frames_);
-		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
-		cv::Mat tmp(rgb->height, rgb->width, CV_8UC4, rgb->data);
-		cv::Mat r;
-        if (mirror_ == true){
-        	cv::flip(tmp,r,1);
-        }else{
-        	r = tmp.clone();
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+		
+		cv::Mat depth_tmp(depth->height, depth->width, CV_32FC1, depth->data);
+		
+		if(mirror_ == true){
+        	cv::flip(depth_tmp, depth_mat, 1);
+        }else
+        {
+        	depth_mat = depth_tmp.clone();
         }
-        
 		listener_.release(frames_);
-		return r;
 	}
 
-	cv::Mat getDepth(){
-		listener_.waitForNewFrame(frames_);
-		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
-		cv::Mat tmp(depth->height, depth->width, CV_32FC1, depth->data);
-		cv::Mat r;
-        if (mirror_ == true) {
-        	cv::flip(tmp,r,1);
-        }else{
-        	r = tmp.clone();
-        }
-
-		listener_.release(frames_);
-		return r;
-	}
-
-	std::pair<cv::Mat, cv::Mat> getDepthRgb(){
-		listener_.waitForNewFrame(frames_);
-		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
-		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
-		registration_->apply(rgb, depth, &undistorted_, &registered_, false);
-		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
-		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
-		cv::Mat r = tmp_color.clone();
-		cv::Mat d = tmp_depth.clone();
-		if (mirror_ == true) {
-			cv::flip(tmp_depth, d, 1);
-			cv::flip(tmp_color, r, 1);
-		}
-		listener_.release(frames_);
-		return std::pair<cv::Mat, cv::Mat>(d,r);
-	}
-
-	std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> getAllUnregistered(){
+	// Use only if you want only color, else use get(cv::Mat, cv::Mat) to have the images aligned
+	void getColor(cv::Mat & color_mat){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
-		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
-		registration_->apply(rgb, depth, &undistorted_, &registered_);
-		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
+
 		cv::Mat tmp_color(rgb->height, rgb->width, CV_8UC4, rgb->data);
-		cv::Mat r = tmp_color.clone();
-		cv::Mat d = tmp_depth.clone();
 
-		if (mirror_ == true) {
-			cv::flip(d, d, 1);
-			cv::flip(r, r, 1);
+		if (mirror_ == true){
+			cv::flip(tmp_color, color_mat, 1);
+		}else
+		{
+			color_mat = tmp_color.clone();
 		}
-
-		boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> c = getCloud(rgb, depth);
 		listener_.release(frames_);
-		return std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>(d, r, c);
 	}
 
-	std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> getAllRegistered(){
+	// Depth and color are aligned and registered 
+	void get(cv::Mat & color_mat, cv::Mat & depth_mat, bool full_hd = true, bool remove_points = false){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
-		registration_->apply(rgb, depth, &undistorted_, &registered_);
+
+		registration_->apply(rgb, depth, &undistorted_, &registered_, remove_points, &big_mat_, map_);
+
 		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
-		cv::Mat tmp_color(registered_.height, registered_.width, CV_8UC4, registered_.data);
-		cv::Mat r = tmp_color.clone();
-		cv::Mat d = tmp_depth.clone();
+		cv::Mat tmp_color;
+		if(full_hd)
+			tmp_color = cv::Mat(rgb->height, rgb->width, CV_8UC4, rgb->data);
+		else
+			tmp_color = cv::Mat(registered_.height, registered_.width, CV_8UC4, registered_.data);
 
 		if (mirror_ == true) {
-			cv::flip(d, d, 1);
-			cv::flip(r, r, 1);
+			cv::flip(tmp_depth, depth_mat, 1);
+			cv::flip(tmp_color, color_mat, 1);
+		}else{
+			color_mat = tmp_color.clone();
+			depth_mat = tmp_depth.clone();
 		}
 
-		boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> c = getCloud(rgb, depth);
 		listener_.release(frames_);
-		return std::tuple<cv::Mat, cv::Mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>(d, r, c);
+	}
+
+
+	// All frame and cloud are aligned. There is a small overhead in the double call to registration->apply which has to be removed
+	void get(cv::Mat & color_mat, cv::Mat & depth_mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, bool full_hd = true, bool remove_points = false){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+
+		registration_->apply(rgb, depth, &undistorted_, &registered_, remove_points, &big_mat_, map_);
+
+		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
+		cv::Mat tmp_color;
+
+		if(full_hd)
+			tmp_color = cv::Mat(rgb->height, rgb->width, CV_8UC4, rgb->data);
+		else
+			tmp_color = cv::Mat(registered_.height, registered_.width, CV_8UC4, registered_.data);
+
+		if (mirror_ == true) {
+			cv::flip(tmp_depth, depth_mat, 1);
+			cv::flip(tmp_color, color_mat, 1);
+		}else{
+			color_mat = tmp_color.clone();
+			depth_mat = tmp_depth.clone();
+		}
+
+		getCloud(rgb, depth, cloud);
+		listener_.release(frames_);
 	}
 
 #ifdef WITH_SERIALIZATION

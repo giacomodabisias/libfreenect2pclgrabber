@@ -6,6 +6,8 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <fstream>
 
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 struct microser
 {
@@ -44,6 +46,14 @@ inline microser & operator << (microser & x, const uint64_t & y)
 	x.ons_.write((const char*)&y,8);
 	return x;
 }
+
+inline microser & operator << (microser & x, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & y)
+{
+	x.ons_.write((const char*)&(y->points[0]), sizeof(pcl::PointXYZRGB) * y->size());
+	return x;
+}
+
+
 
 BOOST_SERIALIZATION_SPLIT_FREE(::cv::Mat)
 namespace boost {

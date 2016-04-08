@@ -118,17 +118,18 @@ int main(int argc, char *argv[])
 
   std::tuple<cv::Mat, cv::Mat, boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> cdc;
 
+  cv::Mat color, depth;
+
   while(!viewer->wasStopped()){
 
     viewer->spinOnce ();
     std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
 
-    cloud = k2g.updateCloud(cloud);
-    //cdc = k2g.getAllUnregistered();
-    //cloud = std::get<2>(cdc);
+    //cloud = k2g.updateCloud(cloud);
+    k2g.get(color, depth, cloud);
     // Showing only color since depth is float and needs conversion
-    //cv::imshow("color", std::get<1>(cdc));
-    //int c = cv::waitKey(10);
+    cv::imshow("color", color);
+    int c = cv::waitKey(10);
     
     std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
     std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;

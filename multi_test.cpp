@@ -64,9 +64,11 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
       pcl::PLYWriter writer;
       std::chrono::high_resolution_clock::time_point p = std::chrono::high_resolution_clock::now();
       std::string now = std::to_string((long)std::chrono::duration_cast<std::chrono::milliseconds>(p.time_since_epoch()).count());
+      cv::Mat color;
       for(size_t i = 0; i < s->kinects_.size(); ++i){
       	writer.write ("cloud_"+ std::to_string(i) + "_" + now + ".ply", *(s->clouds_[i]), s->binary_, s->use_camera_);
-      	cv::imwrite("color_" + std::to_string(i) + "_" + now + ".jpg", s->kinects_[i]->getColor());
+        s->kinects_[i]->getColor(color);
+      	cv::imwrite("color_" + std::to_string(i) + "_" + now + ".jpg", color);
       }
       std::cout << "saved " << "cloud and color " + now << std::endl;
     }
