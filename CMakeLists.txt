@@ -64,15 +64,20 @@ endif()
 #	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
 #endif()
 
+option(WITH_PCL "adds pcl cloud support" ON)
+if(${WITH_PCL})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWITH_PCL")
+	find_package(PCL REQUIRED)
+	link_directories(${PCL_LIBRARY_DIRS})
+	add_definitions(${PCL_DEFINITIONS})
+	include_directories(${PCL_INCLUDE_DIRS})
+endif()
+
+
 find_package(OpenCV     REQUIRED)
-find_package(PCL        REQUIRED)
 find_package(Freenect2  REQUIRED)
 
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
 include_directories(${OpenCV_INCLUDE_DIRS})
-include_directories(${PCL_INCLUDE_DIRS})
 include_directories(${FREENECT2_INCLUDE_DIRS})
 
 add_executable(Kinect2Grabber      test.cpp)

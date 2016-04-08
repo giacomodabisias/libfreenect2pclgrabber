@@ -24,8 +24,10 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/registration.h>
+#ifdef WITH_PCL
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#endif
 #include <opencv2/opencv.hpp>
 #include <signal.h>
 #include <cstdlib>
@@ -168,6 +170,7 @@ public:
 		
 	}
 
+#ifdef WITH_PCL
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
 		const short w = undistorted_.width;
 		const short h = undistorted_.height;
@@ -282,7 +285,7 @@ public:
 			const char * itRGB = itRGB0 + offset * 4;
 			const float dy = rowmap(y);
 
-			for(std::size_t x = 0; x < w; ++x, ++itP, ++itD, itRGB += 4 )
+			for(std::size_t x = 0; x < w; ++x, ++itP, ++itD, itRGB += 4)
 			{
 				const float depth_value = *itD / 1000.0f;
 				
@@ -316,6 +319,8 @@ public:
 #endif
 		return cloud;
 	}
+
+#endif
 
 	void shutDown(){
 		dev_->stop();
@@ -380,7 +385,7 @@ public:
 		listener_.release(frames_);
 	}
 
-
+#ifdef WITH_PCL
 	// All frame and cloud are aligned. There is a small overhead in the double call to registration->apply which has to be removed
 	void get(cv::Mat & color_mat, cv::Mat & depth_mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, bool full_hd = true, bool remove_points = false){
 		listener_.waitForNewFrame(frames_);
@@ -408,6 +413,7 @@ public:
 		getCloud(rgb, depth, cloud);
 		listener_.release(frames_);
 	}
+#endif
 
 #ifdef WITH_SERIALIZATION
 	void enableSerialization(){
@@ -438,6 +444,7 @@ private:
 
 		(*oa_) << now << color;
 	}
+#ifdef WITH_PCL
 
 	void serializeCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
 	{	
@@ -455,6 +462,7 @@ private:
 			sr << p.x << p.y << p.z << p.r << p.g << p.b;
 		}
 	}
+#endif
 #endif
 
 	void prepareMake3D(const libfreenect2::Freenect2Device::IrCameraParams & depth_p)
