@@ -374,7 +374,7 @@ public:
 		else
 			tmp_color = cv::Mat(registered_.height, registered_.width, CV_8UC4, registered_.data);
 
-		if (mirror_ == true) {
+		if(mirror_ == true) {
 			cv::flip(tmp_depth, depth_mat, 1);
 			cv::flip(tmp_color, color_mat, 1);
 		}else{
