@@ -17,6 +17,7 @@ Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 */
 #include "ros_kinect2_grabber.h"
+
 // extra headers for writing out ply file
 #include <pcl/console/print.h>
 #include <pcl/console/parse.h>
@@ -33,7 +34,6 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 	{
 		if(pressed == "s")
 		{
-		  
 			pcl::PLYWriter writer;
 			std::chrono::high_resolution_clock::time_point p = std::chrono::high_resolution_clock::now();
 			std::string now = std::to_string((long)std::chrono::duration_cast<std::chrono::milliseconds>(p.time_since_epoch()).count());
@@ -57,35 +57,16 @@ int main(int argc, char *argv[])
 	if(argc > 1){
 		freenectprocessor = static_cast<Processor>(atoi(argv[1]));
 	}
+
 	ros::init(argc, argv, "RosKinect2Grabber");
 
 	K2GRos K2G_ros(freenectprocessor);
-/*
-	boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
-	cloud = K2G_ros.getCloud();
 
-	cloud->sensor_orientation_.w() = 0.0;
-	cloud->sensor_orientation_.x() = 1.0;
-	cloud->sensor_orientation_.y() = 0.0;
-	cloud->sensor_orientation_.z() = 0.0; 
-
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer ("3D Viewer"));
-	viewer->setBackgroundColor(0, 0, 0);
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "sample cloud");
-	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
-
-	PlySaver ps(cloud, false, false, K2G_ros);
-	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);	
-*/
 	while((ros::ok()) && (!K2G_ros.terminate()))
 	{  		
-		//viewer->spinOnce ();
 		K2G_ros.publishAll();
 		K2G_ros.publishCameraInfoColor();
 		K2G_ros.publishCameraInfoDepth();  
-		//pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-		//viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");     	 
 	}
 
 	K2G_ros.shutDown();

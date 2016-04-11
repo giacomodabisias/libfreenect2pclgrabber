@@ -19,7 +19,6 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include "k2g.h"
 #include <pcl/visualization/cloud_viewer.h>
 #include <chrono>
-
 // extra headers for writing out ply file
 #include <pcl/console/print.h>
 #include <pcl/console/parse.h>
@@ -38,7 +37,6 @@ struct PlySaver{
   bool binary_;
   bool use_camera_;
   K2G & k2g_;
-
 };
 
 void
@@ -125,7 +123,6 @@ int main(int argc, char *argv[])
     viewer->spinOnce ();
     std::chrono::high_resolution_clock::time_point tnow = std::chrono::high_resolution_clock::now();
 
-    //cloud = k2g.updateCloud(cloud);
     k2g.get(color, depth, cloud);
     // Showing only color since depth is float and needs conversion
     cv::imshow("color", color);

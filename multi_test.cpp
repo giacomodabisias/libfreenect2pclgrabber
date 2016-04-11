@@ -49,7 +49,6 @@ struct PlySaver{
   bool use_camera_;
 };
 
-
 void
 KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
 {

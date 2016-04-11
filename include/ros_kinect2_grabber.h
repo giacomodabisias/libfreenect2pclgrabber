@@ -23,7 +23,6 @@ struct PlySaver{
   bool binary_;
   bool use_camera_;
   K2GRos & K2G_ros_;
-
 };
 
 class K2GRos 
@@ -48,10 +47,9 @@ public:
 
 		libfreenect2::Freenect2Device::IrCameraParams ir = k2g_.getIrParameters();
 		libfreenect2::Freenect2Device::ColorCameraParams rgb = k2g_.getRgbParameters();
+
 		createCameraInfoColor(rgb);
 		createCameraInfoDepth(ir);
-
-		std::cout << "finished constructing" << std::endl;
 	}
 
 	// Use only if you want only color, else use get(cv::Mat, cv::Mat) to have the images aligned
@@ -119,14 +117,6 @@ public:
 		point_cloud_pub_.publish(point_cloud_2_);
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
-		return k2g_.getCloud();
-	}
-
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
-		return k2g_.updateCloud(cloud);
-	}
-
 	void shutDown(){
 		k2g_.shutDown();
 	}
@@ -138,7 +128,26 @@ public:
 	void setShutdown(){
 		stop = true;
 	}
+	
+	void publishCameraInfoColor()
+	{
+		color_info_pub_.publish(camera_info_color_);
+	}
 
+	void publishCameraInfoDepth()
+	{
+		depth_info_pub_.publish(camera_info_depth_);
+	}
+   
+private:
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(){
+		return k2g_.getCloud();
+	}
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud){
+		return k2g_.updateCloud(cloud);
+	}
 
 	void createImage(cv::Mat & image, std_msgs::Header & header, sensor_msgs::Image & msgImage, const bool color) const
 	{	
@@ -238,20 +247,6 @@ public:
 	  }
 	}
 
-	
-	void publishCameraInfoColor()
-	{
-		color_info_pub_.publish(camera_info_color_);
-	}
-
-	void publishCameraInfoDepth()
-	{
-		depth_info_pub_.publish(camera_info_depth_);
-	}
-
-
-   
-private:
 	ros::NodeHandle nh_;
 	ros::Publisher point_cloud_pub_, color_pub_, color_info_pub_, depth_pub_, depth_info_pub_;
     sensor_msgs::PointCloud2 point_cloud_2_;
