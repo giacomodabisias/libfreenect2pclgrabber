@@ -18,6 +18,7 @@
 # Scuola Superiore Sant'Anna
 # via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 
+
 cmake_minimum_required(VERSION 2.8)
 Project (Kinect2Grabber CXX)
 
@@ -47,22 +48,13 @@ if(${WITH_SERIALIZATION})
 	set(BOOST_LIBS "boost_serialization")
 endif()
 
-#option(WITH_ROS "adds support for ROS" OFF)
-#if(${WITH_ROS})
-#find_package(catkin REQUIRED COMPONENTS   roscpp
-#										  std_msgs
-#										  pcl_conversions
-#										  pcl_ros
-#											  sensor_msgs
-#											  cv_bridge
-#											  image_transport
-#											  tf
-#											  message_generation
-#				)
-#	include_directories(${catkin_INCLUDE_DIRS})
-#	add_executable(RosKinect2Grabber test_ros.cpp)
-#	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
-#endif()
+option(WITH_ROS "adds support for ROS" OFF)
+if(${WITH_ROS})
+find_package(catkin REQUIRED COMPONENTS   roscpp std_msgs pcl_conversions  pcl_ros
+					  sensor_msgs cv_bridge image_transport tf
+					  message_generation )
+include_directories(${catkin_INCLUDE_DIRS})
+endif()
 
 option(WITH_PCL "adds pcl cloud support" ON)
 if(${WITH_PCL})
@@ -72,7 +64,6 @@ if(${WITH_PCL})
 	add_definitions(${PCL_DEFINITIONS})
 	include_directories(${PCL_INCLUDE_DIRS})
 endif()
-
 
 find_package(OpenCV     REQUIRED)
 find_package(Freenect2  REQUIRED)
@@ -85,3 +76,10 @@ add_executable(MultiKinect2Grabber multi_test.cpp)
 
 target_link_libraries(Kinect2Grabber      ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
 target_link_libraries(MultiKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
+
+if( ${WITH_ROS})
+	include_directories(${INCLUDE})
+	add_executable(RosKinect2Grabber test_ros.cpp)
+	target_link_libraries(RosKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} ${catkin_LIBRARIES})
+endif()
+

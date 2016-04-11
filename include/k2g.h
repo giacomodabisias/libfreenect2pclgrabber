@@ -42,8 +42,8 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include "ros_impl.h"
 #endif
 
-
 bool stop = false;
+
 
 enum Processor{
 	CPU, OPENCL, OPENGL, CUDA
@@ -327,6 +327,10 @@ public:
   		dev_->close();
 	}
 
+	libfreenect2::SyncMultiFrameListener * getListener(){
+		return &listener_;
+	}
+
 	// Use only if you want only color, else use get(cv::Mat, cv::Mat) to have the images aligned
 	void getDepth(cv::Mat depth_mat){
 		listener_.waitForNewFrame(frames_);
@@ -360,7 +364,7 @@ public:
 	}
 
 	// Depth and color are aligned and registered 
-	void get(cv::Mat & color_mat, cv::Mat & depth_mat, bool full_hd = true, bool remove_points = false){
+	void get(cv::Mat & color_mat, cv::Mat & depth_mat, const bool full_hd = true, const bool remove_points = false){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
@@ -387,7 +391,8 @@ public:
 
 #ifdef WITH_PCL
 	// All frame and cloud are aligned. There is a small overhead in the double call to registration->apply which has to be removed
-	void get(cv::Mat & color_mat, cv::Mat & depth_mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, bool full_hd = true, bool remove_points = false){
+	void get(cv::Mat & color_mat, cv::Mat & depth_mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, 
+		const bool full_hd = true, const bool remove_points = false){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];

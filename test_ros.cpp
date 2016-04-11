@@ -16,7 +16,7 @@ PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 */
-#include "ros_k2g_grabber.h"
+#include "ros_kinect2_grabber.h"
 // extra headers for writing out ply file
 #include <pcl/console/print.h>
 #include <pcl/console/parse.h>
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	}
 	ros::init(argc, argv, "RosKinect2Grabber");
 
-	Kinect2Grabber K2G_ros(freenectprocessor);
+	K2GRos K2G_ros(freenectprocessor);
 /*
 	boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud;
 	cloud = K2G_ros.getCloud();
@@ -81,7 +81,9 @@ int main(int argc, char *argv[])
 	while((ros::ok()) && (!K2G_ros.terminate()))
 	{  		
 		//viewer->spinOnce ();
-		K2G_ros.publishAll();  
+		K2G_ros.publishAll();
+		K2G_ros.publishCameraInfoColor();
+		K2G_ros.publishCameraInfoDepth();  
 		//pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
 		//viewer->updatePointCloud<pcl::PointXYZRGB> (cloud, rgb, "sample cloud");     	 
 	}
