@@ -29,7 +29,6 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 struct K2G_generator{
 public:
 	K2G_generator(Processor freenectprocessor, bool mirroring, char ** argv): freenectprocessor_(freenectprocessor), mirroring_(mirroring), argv_(argv),n_(0){}
-    //K2G && operator ()(){return std::move(K2G(freenectprocessor_, mirroring_, argv_[n_++ + 2]));}
     K2G * operator ()(){return new K2G(freenectprocessor_, mirroring_, argv_[n_++ + 2]);}
 private:
 	unsigned int n_;
@@ -55,7 +54,7 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
   std::string pressed;
   pressed = event.getKeySym();
   PlySaver * s = (PlySaver*)data;
-  if(event.keyDown ())
+  if(event.keyDown())
   {
     if(pressed == "s")
     {
@@ -73,8 +72,9 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
     }
     if(pressed == "x")
     {
-        for(auto & k : s->kinects_)
+        for(auto & k : s->kinects_){
         	k->storeParameters();
+        }
         std::cout << "stored calibration parameters" << std::endl;
     }
   }

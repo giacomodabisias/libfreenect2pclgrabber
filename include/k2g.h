@@ -113,7 +113,7 @@ public:
 				break;
 		}
 
-		if(serial.empty())
+		if(!serial.empty())
 			serial_ = serial;
 		else
 			serial_ = freenect2_.getDefaultDeviceSerialNumber();
@@ -160,7 +160,7 @@ public:
 		cv::Mat rgb = (cv::Mat_<float>(3,3) << cp.fx, 0, cp.cx, 0, cp.fy, cp.cy, 0, 0, 1);
 		cv::Mat depth = (cv::Mat_<float>(3,3) << ip.fx, 0, ip.cx, 0, ip.fy, ip.cy, 0, 0, 1);
 		cv::Mat depth_dist = (cv::Mat_<float>(1,5) << ip.k1, ip.k2, ip.p1, ip.p2, ip.k3);
-		
+		std::cout << "storing " << serial_ << std::endl;
 		cv::FileStorage fs("calib_" + serial_ + ".yml", cv::FileStorage::WRITE);
 	   
 	    fs << "CcameraMatrix" << rgb;
