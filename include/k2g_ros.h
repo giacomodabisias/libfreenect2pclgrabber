@@ -92,10 +92,9 @@ public:
 		depth_pub_.publish(depth_image_);
 
 		header_color_.stamp = ros::Time::now();
-		
+			
 		color_image_ = cv_bridge::CvImage(header_color_, "bgra8", tmp_color).toImageMsg();
 		color_pub_.publish(color_image_);
-
 		pcl::toROSMsg(*cloud_, point_cloud_2_);
 
 		point_cloud_2_.header.frame_id = "world";

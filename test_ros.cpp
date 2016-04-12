@@ -77,9 +77,10 @@ int main(int argc, char * argv[])
 
 	while((ros::ok()) && (!K2G_ros.terminate()))
 	{  		
-		K2G_ros.publishAll();
+		K2G_ros.publishColor();
 		K2G_ros.publishCameraInfoColor();
-		K2G_ros.publishCameraInfoDepth();  
+		K2G_ros.publishCameraInfoDepth(); 
+		
 	}
 
 	K2G_ros.shutDown();

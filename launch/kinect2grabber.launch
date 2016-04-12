@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+
+	<node pkg="kinect2grabber" type="roskinect2grabber" name="roskinect2grabber" output="screen">
+    </node>
+
+ </launch>
