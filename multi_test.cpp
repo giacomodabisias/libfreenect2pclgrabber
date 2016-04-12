@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
     std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<float>>(tpost - tnow).count() * 1000 << std::endl;
 
     for(size_t i = 0; i < kinect2_count; ++i)
-    	viewer->updatePointCloud<pcl::PointXYZRGB> (clouds[i], pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> (clouds[i]), "sample cloud_" + i);
+    	viewer->updatePointCloud<pcl::PointXYZRGB>(clouds[i], pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> (clouds[i]), "sample cloud_" + i);
   }
 
   // Close all kinect grabbers

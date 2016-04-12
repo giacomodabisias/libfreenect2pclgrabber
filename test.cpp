@@ -39,11 +39,9 @@ struct PlySaver{
   K2G & k2g_;
 };
 
-void
-KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
+void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
 {
-  std::string pressed;
-  pressed = event.getKeySym();
+  std::string pressed = event.getKeySym();
   PlySaver * s = (PlySaver*)data;
   if(event.keyDown ())
   {
@@ -56,6 +54,10 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
       writer.write ("cloud_" + now, *(s->cloud_), s->binary_, s->use_camera_);
       
       std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
+    }
+    if(pressed == "m")
+    {
+      s->k2g_.mirror();
     }
 #ifdef WITH_SERIALIZATION
     if(pressed == "z")
@@ -78,7 +80,7 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
   }
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
   std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2,3 correspond to CPU, OPENCL, OPENGL, CUDA respectively\n";
   std::cout << "Press \'s\' to store a cloud" << std::endl;

@@ -12,19 +12,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-class K2GRos;
-
-struct PlySaver{
-
-  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera, K2GRos & ros_grabber): 
-           cloud_(cloud), binary_(binary), use_camera_(use_camera), K2G_ros_(ros_grabber){}
-
-  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
-  bool binary_;
-  bool use_camera_;
-  K2GRos & K2G_ros_;
-};
-
 class K2GRos 
 {
 
@@ -129,14 +116,16 @@ public:
 		stop = true;
 	}
 	
-	void publishCameraInfoColor()
-	{
+	void publishCameraInfoColor(){
 		color_info_pub_.publish(camera_info_color_);
 	}
 
-	void publishCameraInfoDepth()
-	{
+	void publishCameraInfoDepth(){
 		depth_info_pub_.publish(camera_info_depth_);
+	}
+
+	void mirror(){
+		k2g_.mirror();
 	}
    
 private:

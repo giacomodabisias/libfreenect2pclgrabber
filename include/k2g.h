@@ -327,6 +327,10 @@ public:
   		dev_->close();
 	}
 
+	void mirror(){
+		mirror_ != mirror_;
+	}
+
 	libfreenect2::SyncMultiFrameListener * getListener(){
 		return &listener_;
 	}

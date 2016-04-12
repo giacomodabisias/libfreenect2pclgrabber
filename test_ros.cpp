@@ -16,7 +16,7 @@ PERCRO, (Laboratory of Perceptual Robotics)
 Scuola Superiore Sant'Anna
 via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 */
-#include "ros_kinect2_grabber.h"
+#include "k2g_ros.h"
 
 // extra headers for writing out ply file
 #include <pcl/console/print.h>
@@ -24,11 +24,20 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <pcl/console/time.h>
 #include <pcl/io/ply_io.h>
 
-void
-KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
+struct PlySaver{
+
+  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera, K2GRos & ros_grabber): 
+           cloud_(cloud), binary_(binary), use_camera_(use_camera), K2G_ros_(ros_grabber){}
+
+  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
+  bool binary_;
+  bool use_camera_;
+  K2GRos & K2G_ros_;
+};
+
+void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)
 {
-	std::string pressed;
-	pressed = event.getKeySym();
+	std::string pressed = event.getKeySym();
 	PlySaver * s = (PlySaver*)data;
 	if(event.keyDown ())
 	{
@@ -40,6 +49,10 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 			writer.write ("cloud_" + now, *(s->cloud_), s->binary_, s->use_camera_);
 			std::cout << "saved " << "cloud_" + now + ".ply" << std::endl;
 		}
+		if(pressed == "m")
+		{
+			s->K2G_ros_.mirror();
+		}
 		if(pressed == "e")
 		{
 			s->K2G_ros_.setShutdown();
@@ -49,7 +62,7 @@ KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * dat
 }
 
 
-int main(int argc, char *argv[])
+int main(int argc, char * argv[])
 {
 	std::cout << "Syntax is: " << argv[0] << " [-processor 0|1|2] -processor options 0,1,2,3 correspond to CPU, OPENCL, OPENGL, CUDA respectively\n";
 	Processor freenectprocessor = OPENGL;
