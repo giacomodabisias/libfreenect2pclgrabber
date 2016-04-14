@@ -18,22 +18,14 @@
 # Scuola Superiore Sant'Anna
 # via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 
-
 cmake_minimum_required(VERSION 2.8)
-Project (kinect2grabber CXX)
+Project(kinect2grabber CXX)
 
 set(CMAKE_CXX_FLAGS   "${CMAKE_CXX_FLAGS} -std=c++11") 
 set(CMAKE_CXX_FLAGS   "${CMAKE_CXX_FLAGS} -march=native")
 set(CMAKE_BUILD_TYPE  Release)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
 set(INCLUDE           "${CMAKE_SOURCE_DIR}/include")
-
-option(WITH_ROS "adds support for ROS" OFF)
-if(${WITH_ROS}) 
-	set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/modules ${CMAKE_MODULE_PATH})
-endif()
-
-set(BOOST_LIBS "")
 
 option(WITH_OPENCL "adds opencl support for freenect2" OFF)
 if(${WITH_OPENCL})
@@ -53,18 +45,15 @@ if(${WITH_SERIALIZATION})
 	set(BOOST_LIBS "boost_serialization")
 endif()
 
-
+option(WITH_ROS "adds support for ROS" OFF)
 if(${WITH_ROS})
 	find_package(catkin REQUIRED COMPONENTS   roscpp std_msgs pcl_conversions  pcl_ros
-						  sensor_msgs cv_bridge image_transport tf
-						  message_generation )
-
-	catkin_package(
-	  CATKIN_DEPENDS roscpp rospy std_msgs pcl_conversions  pcl_ros
-						  sensor_msgs cv_bridge image_transport tf
-						  cmake_modules
+						sensor_msgs cv_bridge image_transport tf
+						message_generation )
+	catkin_package( CATKIN_DEPENDS roscpp rospy std_msgs pcl_conversions  pcl_ros
+						sensor_msgs cv_bridge image_transport tf
+						cmake_modules
 	)
-
 	include_directories(${catkin_INCLUDE_DIRS} include)
 endif()
 
@@ -84,16 +73,14 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${FREENECT2_INCLUDE_DIRS})
 include_directories(${INCLUDE})
 
-
 add_executable(Kinect2Grabber      test.cpp)
 add_executable(MultiKinect2Grabber multi_test.cpp)
 
 target_link_libraries(Kinect2Grabber      ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
 target_link_libraries(MultiKinect2Grabber ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
 
-if( ${WITH_ROS})
-
+if(${WITH_ROS})
 	add_executable(RosKinect2Grabber test_ros.cpp)
-	target_link_libraries(RosKinect2Grabber ${catkin_LIBRARIES} ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS} )
+	target_link_libraries(RosKinect2Grabber ${catkin_LIBRARIES} ${OpenCV_LIBS} ${FREENECT2_LIBRARY} ${PCL_LIBRARIES} ${BOOST_LIBS})
 endif()
 

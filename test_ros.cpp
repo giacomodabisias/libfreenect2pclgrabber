@@ -26,13 +26,13 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 
 struct PlySaver{
 
-  PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera, K2GRos & ros_grabber): 
+	PlySaver(boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud, bool binary, bool use_camera, K2GRos & ros_grabber): 
            cloud_(cloud), binary_(binary), use_camera_(use_camera), K2G_ros_(ros_grabber){}
 
-  boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
-  bool binary_;
-  bool use_camera_;
-  K2GRos & K2G_ros_;
+ 	boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>> cloud_;
+	bool binary_;
+  	bool use_camera_;
+  	K2GRos & K2G_ros_;
 };
 
 void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void * data)

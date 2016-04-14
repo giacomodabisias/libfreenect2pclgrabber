@@ -116,8 +116,6 @@ int main(int argc, char * argv[])
   PlySaver ps(cloud, false, false, k2g);
   viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&ps);
 
-  std::tuple<cv::Mat, cv::Mat, boost::shared_ptr<pcl::PointCloud<pcl::PointXYZRGB>>> cdc;
-
   cv::Mat color, depth;
 
   while(!viewer->wasStopped()){

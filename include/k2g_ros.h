@@ -158,12 +158,11 @@ private:
 	}
 
 
-	void createCameraInfoColor( libfreenect2::Freenect2Device::ColorCameraParams color_params)
+	void createCameraInfoColor(libfreenect2::Freenect2Device::ColorCameraParams color_params)
 	{
 	  cv::Mat proj_matrix_color = cv::Mat::zeros(3, 4, CV_64F);
 	  cv::Mat camera_matrix_color = cv::Mat::eye(3, 3, CV_64F);
 	  cv::Mat distortion_matrix_color = cv::Mat::zeros(1, 5, CV_64F);
-
 
 	  camera_matrix_color.at<double>(0, 0) = color_params.fx;
 	  camera_matrix_color.at<double>(1, 1) = color_params.fy;
@@ -176,7 +175,7 @@ private:
 	  																   proj_matrix_color, camera_info_color_, true);
 	}
 
-	void createCameraInfoDepth( libfreenect2::Freenect2Device::IrCameraParams ir_params)
+	void createCameraInfoDepth(libfreenect2::Freenect2Device::IrCameraParams ir_params)
 	{
 		cv::Mat proj_matrix_depth = cv::Mat::zeros(3, 4, CV_64F);
 		cv::Mat camera_matrix_depth = cv::Mat::eye(3, 3, CV_64F);
@@ -197,42 +196,43 @@ private:
 						  const cv::Mat &projection, sensor_msgs::CameraInfo &cameraInfo, const bool color ) const
 	{
 
-	  if (color)
-	  {
-	  	cameraInfo.header.frame_id = "kinect2_rgb_optical_frame";	
-	  }
-	  else
-	  {
-	  	cameraInfo.header.frame_id = "kinect2_ir_optical_frame";	
-	  }
-	  cameraInfo.height = size.height;
-	  cameraInfo.width = size.width;
+		if (color)
+		{
+			cameraInfo.header.frame_id = "kinect2_rgb_optical_frame";	
+		}
+		else
+		{
+			cameraInfo.header.frame_id = "kinect2_ir_optical_frame";	
+		}
+		cameraInfo.height = size.height;
+		cameraInfo.width = size.width;
 
-	  const double *itC = cameraMatrix.ptr<double>(0, 0);
-	  for(size_t i = 0; i < 9; ++i, ++itC)
-	  {
-	    cameraInfo.K[i] = *itC;
-	  }
+		const double *itC = cameraMatrix.ptr<double>(0, 0);
+		for(size_t i = 0; i < 9; ++i, ++itC)
+		{
+			cameraInfo.K[i] = *itC;
+		}
 
-	  const double *itR = rotation.ptr<double>(0, 0);
-	  for(size_t i = 0; i < 9; ++i, ++itR)
-	  {
-	    cameraInfo.R[i] = *itR;
-	  }
+		const double *itR = rotation.ptr<double>(0, 0);
+		for(size_t i = 0; i < 9; ++i, ++itR)
+		{
+			cameraInfo.R[i] = *itR;
+		}
 
-	  const double *itP = projection.ptr<double>(0, 0);
-	  for(size_t i = 0; i < 12; ++i, ++itP)
-	  {
-	    cameraInfo.P[i] = *itP;
-	  }
+		const double *itP = projection.ptr<double>(0, 0);
+		for(size_t i = 0; i < 12; ++i, ++itP)
+		{
+			cameraInfo.P[i] = *itP;
+		}
 
-	  cameraInfo.distortion_model = "plumb_bob";
-	  cameraInfo.D.resize(distortion.cols);
-	  const double *itD = distortion.ptr<double>(0, 0);
-	  for(size_t i = 0; i < (size_t)distortion.cols; ++i, ++itD)
-	  {
-	    cameraInfo.D[i] = *itD;
-	  }
+		cameraInfo.distortion_model = "plumb_bob";
+		cameraInfo.D.resize(distortion.cols);
+		const double *itD = distortion.ptr<double>(0, 0);
+		
+		for(size_t i = 0; i < (size_t)distortion.cols; ++i, ++itD)
+		{
+			cameraInfo.D[i] = *itD;
+		}
 	}
 
 	ros::NodeHandle nh_;
