@@ -126,7 +126,7 @@ int main(int argc, char * argv[])
     k2g.get(color, depth, cloud);
     // Showing only color since depth is float and needs conversion
     cv::imshow("color", color);
-    int c = cv::waitKey(10);
+    int c = cv::waitKey(1);
     
     std::chrono::high_resolution_clock::time_point tpost = std::chrono::high_resolution_clock::now();
     std::cout << "delta " << std::chrono::duration_cast<std::chrono::duration<double>>(tpost-tnow).count() * 1000 << std::endl;

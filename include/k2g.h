@@ -44,7 +44,6 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 
 bool stop = false;
 
-
 enum Processor{
 	CPU, OPENCL, OPENGL, CUDA
 };
@@ -144,7 +143,7 @@ public:
 
 	void printParameters(){
 		libfreenect2::Freenect2Device::ColorCameraParams cp = getRgbParameters();
-		std::cout << " rgb fx=" << cp.fx << ",fy=" << cp.fy <<
+		std::cout << "rgb fx=" << cp.fx << ",fy=" << cp.fy <<
 			",cx=" << cp.cx << ",cy=" << cp.cy << std::endl;
 		libfreenect2::Freenect2Device::IrCameraParams ip = getIrParameters();
 		std::cout << "ir fx=" << ip.fx << ",fy=" << ip.fy <<
@@ -184,7 +183,7 @@ public:
 		const short h = undistorted_.height;
 		if(cloud->size() != w * h)  
 			cloud->resize(w * h);      
-		updateCloud(rgb, depth, cloud);
+		return updateCloud(rgb, depth, cloud);
 	}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud){
@@ -419,7 +418,7 @@ public:
 			depth_mat = tmp_depth.clone();
 		}
 
-		getCloud(rgb, depth, cloud);
+		cloud = getCloud(rgb, depth, cloud);
 		listener_.release(frames_);
 	}
 #endif
