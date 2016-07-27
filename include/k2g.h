@@ -258,6 +258,7 @@ public:
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr updateCloud(const libfreenect2::Frame * rgb, const libfreenect2::Frame * depth, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud){
 		
 		registration_->apply(rgb, depth, &undistorted_, &registered_, true, &big_mat_, map_);
+
 		const std::size_t w = undistorted_.width;
 		const std::size_t h = undistorted_.height;
 
@@ -334,7 +335,7 @@ public:
 		return &listener_;
 	}
 
-	// Use only if you want only color, else use get(cv::Mat, cv::Mat) to have the images aligned
+	// Use only if you want only depth, else use get(cv::Mat, cv::Mat) to have the images aligned
 	void getDepth(cv::Mat depth_mat){
 		listener_.waitForNewFrame(frames_);
 		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
@@ -346,6 +347,21 @@ public:
         }else
         {
         	depth_mat = depth_tmp.clone();
+        }
+		listener_.release(frames_);
+	}
+
+	void getIr(cv::Mat ir_mat){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * ir = frames_[libfreenect2::Frame::Ir];
+		
+		cv::Mat ir_tmp(ir->height, ir->width, CV_32FC1, ir->data);
+		
+		if(mirror_ == true){
+        	cv::flip(ir_tmp, ir_mat, 1);
+        }else
+        {
+        	ir_mat = ir_tmp.clone();
         }
 		listener_.release(frames_);
 	}
