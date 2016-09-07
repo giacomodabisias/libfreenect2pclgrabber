@@ -24,6 +24,7 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/registration.h>
+#include <libfreenect2/logger.h>
 #ifdef WITH_PCL
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -139,6 +140,10 @@ public:
 	libfreenect2::Freenect2Device::ColorCameraParams getRgbParameters(){
 		libfreenect2::Freenect2Device::ColorCameraParams rgb = dev_->getColorCameraParams();
 		return rgb;
+	}
+
+	void hideOutput() {
+		libfreenect2::setGlobalLogger(nullptr);
 	}
 
 	void printParameters(){
