@@ -122,6 +122,8 @@ public:
 		dev_->setIrAndDepthFrameListener(&listener_);
 		dev_->start();
 
+		logger_ = libfreenect2::getGlobalLogger();
+
 		registration_ = new libfreenect2::Registration(dev_->getIrCameraParams(), dev_->getColorCameraParams());
 
 		prepareMake3D(dev_->getIrCameraParams());
@@ -142,8 +144,13 @@ public:
 		return rgb;
 	}
 
-	void hideOutput() {
+	void disableLog() {
+		logger_ = libfreenect2::getGlobalLogger();
 		libfreenect2::setGlobalLogger(nullptr);
+	}
+
+	void enableLog() {
+		libfreenect2::setGlobalLogger(logger_);
 	}
 
 	void printParameters(){
@@ -515,6 +522,7 @@ private:
 	libfreenect2::PacketPipeline * pipeline_ = 0;
 	libfreenect2::Registration * registration_ = 0;
 	libfreenect2::SyncMultiFrameListener listener_;
+	libfreenect2::Logger * logger_ = nullptr;
 	libfreenect2::FrameMap frames_;
 	libfreenect2::Frame undistorted_, registered_, big_mat_;
 	Eigen::Matrix<float,512,1> colmap;
