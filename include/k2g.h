@@ -408,6 +408,38 @@ public:
 		listener_.release(frames_);
 	}
 
+
+	// Depth and color are aligned and registered 
+	void get(cv::Mat & color_mat, cv::Mat & depth_mat, cv::Mat & ir_mat, const bool full_hd = true, const bool remove_points = false){
+		listener_.waitForNewFrame(frames_);
+		libfreenect2::Frame * rgb = frames_[libfreenect2::Frame::Color];
+		libfreenect2::Frame * depth = frames_[libfreenect2::Frame::Depth];
+		libfreenect2::Frame * ir = frames_[libfreenect2::Frame::Ir];
+
+		registration_->apply(rgb, depth, &undistorted_, &registered_, remove_points, &big_mat_, map_);
+
+		cv::Mat tmp_depth(undistorted_.height, undistorted_.width, CV_32FC1, undistorted_.data);
+		cv::Mat tmp_color;
+		cv::Mat ir_tmp(ir->height, ir->width, CV_32FC1, ir->data);
+
+		if(full_hd)
+			tmp_color = cv::Mat(rgb->height, rgb->width, CV_8UC4, rgb->data);
+		else
+			tmp_color = cv::Mat(registered_.height, registered_.width, CV_8UC4, registered_.data);
+
+		if(mirror_ == true) {
+			cv::flip(tmp_depth, depth_mat, 1);
+			cv::flip(tmp_color, color_mat, 1);
+			cv::flip(ir_tmp, ir_mat, 1);
+		}else{
+			color_mat = tmp_color.clone();
+			depth_mat = tmp_depth.clone();
+			ir_mat = ir_tmp.clone();
+		}
+
+		listener_.release(frames_);
+	}
+
 #ifdef WITH_PCL
 	// All frame and cloud are aligned. There is a small overhead in the double call to registration->apply which has to be removed
 	void get(cv::Mat & color_mat, cv::Mat & depth_mat, pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, 
