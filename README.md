@@ -16,3 +16,5 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet splash usbcore.usbfs_memory_mb=1000"
 
 Update grub with these settings:
 $ sudo update-grub
+
+REMEMBER TO EXECUTE sudo make install in the libfreenect2 build folder to copy all files in /usr/local

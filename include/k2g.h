@@ -24,6 +24,7 @@ via Luigi Alamanni 13D, San Giuliano Terme 56010 (PI), Italy
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/registration.h>
+#include <libfreenect2/logger.h>
 #ifdef WITH_PCL
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -121,6 +122,8 @@ public:
 		dev_->setIrAndDepthFrameListener(&listener_);
 		dev_->start();
 
+		logger_ = libfreenect2::getGlobalLogger();
+
 		registration_ = new libfreenect2::Registration(dev_->getIrCameraParams(), dev_->getColorCameraParams());
 
 		prepareMake3D(dev_->getIrCameraParams());
@@ -139,6 +142,15 @@ public:
 	libfreenect2::Freenect2Device::ColorCameraParams getRgbParameters(){
 		libfreenect2::Freenect2Device::ColorCameraParams rgb = dev_->getColorCameraParams();
 		return rgb;
+	}
+
+	void disableLog() {
+		logger_ = libfreenect2::getGlobalLogger();
+		libfreenect2::setGlobalLogger(nullptr);
+	}
+
+	void enableLog() {
+		libfreenect2::setGlobalLogger(logger_);
 	}
 
 	void printParameters(){
@@ -542,6 +554,7 @@ private:
 	libfreenect2::PacketPipeline * pipeline_ = 0;
 	libfreenect2::Registration * registration_ = 0;
 	libfreenect2::SyncMultiFrameListener listener_;
+	libfreenect2::Logger * logger_ = nullptr;
 	libfreenect2::FrameMap frames_;
 	libfreenect2::Frame undistorted_, registered_, big_mat_;
 	Eigen::Matrix<float,512,1> colmap;
