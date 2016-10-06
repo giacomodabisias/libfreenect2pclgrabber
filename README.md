@@ -2,7 +2,7 @@ libfreenect2pclgrabber
 ======================
 
 A grabber for the kinect2 which returns images and Point Clouds. 
-There is asupport for multiple kinects and a ROS interface.
+There is the support for multiple kinects and a ROS interface.
 
 For any questions don't hesitate to contact me at giacomo.dabisias@gmail.com.
 
